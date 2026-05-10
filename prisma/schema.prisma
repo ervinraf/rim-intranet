@@ -1,0 +1,703 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId], map: "Account_userId_fkey")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "Session_userId_fkey")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model User {
+  id            String     @id @default(cuid())
+  email         String     @unique
+  emailVerified DateTime?
+  passwordHash  String?
+  name          String?
+  image         String?
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  accounts      Account[]
+  auditLogs     AuditLog[]
+  employee      Employee?
+  sessions      Session[]
+}
+
+model Employee {
+  id                String               @id @default(cuid())
+  userId            String               @unique
+  itemNumber        Int?
+  paterno           String
+  materno           String?
+  nombres           String
+  nombres2          String?
+  fullName          String
+  employeeType      EmployeeType         @default(OPERATIVO)
+  sdi               Decimal?             @db.Decimal(10, 2)
+  salarioBase       Decimal?             @db.Decimal(10, 2)
+  salarioMensual    Decimal?             @db.Decimal(10, 2)
+  extension         String?
+  phone             String?
+  position          String?
+  hireDate          DateTime?
+  birthDate         DateTime?
+  isActive          Boolean              @default(true)
+  departmentId      String?
+  roleId            String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  dc3Records        DC3Record[]
+  managedDept       Department[]         @relation("DeptManager")
+  documentAccess    DocumentPermission[]
+  eppRecords        EPPRecord[]
+  department        Department?          @relation(fields: [departmentId], references: [id])
+  role              Role?                @relation(fields: [roleId], references: [id])
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hoursBank         HoursBank[]
+  approvedOvertimes OvertimeRecord[]     @relation("OvertimeApprover")
+  overtimeRecords   OvertimeRecord[]
+  approvedTimeOffs  TimeOffRequest[]     @relation("TimeOffApprover")
+  timeOffRequests   TimeOffRequest[]
+  toolCheckouts     ToolCheckout[]
+  vales             Vale[]
+  valesApproved     Vale[]               @relation("ValeApprover")
+
+  @@index([departmentId], map: "Employee_departmentId_fkey")
+  @@index([roleId], map: "Employee_roleId_fkey")
+}
+
+model Department {
+  id            String                @id @default(cuid())
+  name          String                @unique
+  description   String?
+  managerId     String?
+  parentId      String?
+  isActive      Boolean               @default(true)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  announcements Announcement[]
+  manager       Employee?             @relation("DeptManager", fields: [managerId], references: [id])
+  parent        Department?           @relation("SubDepts", fields: [parentId], references: [id])
+  children      Department[]          @relation("SubDepts")
+  documents     Document[]
+  employees     Employee[]
+  equipment     Equipment[]
+  requisitions  PurchaseRequisition[]
+  tools         Tool[]
+
+  @@index([managerId], map: "Department_managerId_fkey")
+  @@index([parentId], map: "Department_parentId_fkey")
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  isSystem    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  employees   Employee[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  module      String
+  action      String
+  description String?
+  roles       RolePermission[]
+
+  @@unique([module, action])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId], map: "RolePermission_permissionId_fkey")
+}
+
+model Document {
+  id           String               @id @default(cuid())
+  name         String
+  description  String?
+  fileName     String
+  fileUrl      String
+  fileSize     Int?
+  mimeType     String?
+  version      Int                  @default(1)
+  categoryId   String?
+  departmentId String?
+  uploadedById String
+  isActive     Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  category     DocumentCategory?    @relation(fields: [categoryId], references: [id])
+  department   Department?          @relation(fields: [departmentId], references: [id])
+  permissions  DocumentPermission[]
+  versions     DocumentVersion[]
+
+  @@index([categoryId], map: "Document_categoryId_fkey")
+  @@index([departmentId], map: "Document_departmentId_fkey")
+}
+
+model DocumentVersion {
+  id           String   @id @default(cuid())
+  documentId   String
+  version      Int
+  fileName     String
+  fileUrl      String
+  uploadedById String
+  note         String?
+  createdAt    DateTime @default(now())
+  document     Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId], map: "DocumentVersion_documentId_fkey")
+}
+
+model DocumentCategory {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String?
+  createdAt   DateTime   @default(now())
+  documents   Document[]
+}
+
+model DocumentPermission {
+  id          String                  @id @default(cuid())
+  documentId  String
+  employeeId  String
+  level       DocumentPermissionLevel
+  grantedAt   DateTime                @default(now())
+  grantedById String?
+  document    Document                @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  employee    Employee                @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, employeeId])
+  @@index([employeeId], map: "DocumentPermission_employeeId_fkey")
+}
+
+model OvertimeRecord {
+  id              String         @id @default(cuid())
+  employeeId      String
+  weekStart       DateTime
+  weekEnd         DateTime
+  hoursWorked     Decimal        @db.Decimal(5, 2)
+  isWeekly        Boolean        @default(true)
+  doubleHours     Decimal        @db.Decimal(5, 2)
+  tripleHours     Decimal        @db.Decimal(5, 2)
+  grossHours      Decimal        @db.Decimal(5, 2)
+  isMinimumWage   Boolean        @default(false)
+  exceeds9Hours   Boolean        @default(false)
+  exemptHours     Decimal        @db.Decimal(5, 2)
+  taxableHours    Decimal        @db.Decimal(5, 2)
+  isrRate         Decimal        @db.Decimal(5, 4)
+  taxAmount       Decimal        @db.Decimal(10, 2)
+  netHours        Decimal        @db.Decimal(5, 2)
+  notes           String?
+  status          OvertimeStatus @default(PENDIENTE)
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  bankEntry       HoursBank?
+  approvedBy      Employee?      @relation("OvertimeApprover", fields: [approvedById], references: [id])
+  employee        Employee       @relation(fields: [employeeId], references: [id])
+
+  @@index([approvedById], map: "OvertimeRecord_approvedById_fkey")
+  @@index([employeeId], map: "OvertimeRecord_employeeId_fkey")
+}
+
+model HoursBank {
+  id               String           @id @default(cuid())
+  employeeId       String
+  overtimeRecordId String?          @unique
+  hoursCredited    Decimal          @db.Decimal(5, 2)
+  hoursUsed        Decimal          @default(0.00) @db.Decimal(5, 2)
+  hoursAvailable   Decimal          @db.Decimal(5, 2)
+  creditedAt       DateTime         @default(now())
+  expiresAt        DateTime?
+  isExpired        Boolean          @default(false)
+  employee         Employee         @relation(fields: [employeeId], references: [id])
+  overtimeRecord   OvertimeRecord?  @relation(fields: [overtimeRecordId], references: [id])
+  timeOffUsages    TimeOffRequest[]
+
+  @@index([employeeId], map: "HoursBank_employeeId_fkey")
+}
+
+model TimeOffRequest {
+  id              String        @id @default(cuid())
+  employeeId      String
+  hoursBankId     String?
+  hoursRequested  Decimal       @db.Decimal(5, 2)
+  dateFrom        DateTime
+  dateTo          DateTime
+  reason          String?
+  status          TimeOffStatus @default(PENDIENTE)
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  approvedBy      Employee?     @relation("TimeOffApprover", fields: [approvedById], references: [id])
+  employee        Employee      @relation(fields: [employeeId], references: [id])
+  hoursBank       HoursBank?    @relation(fields: [hoursBankId], references: [id])
+
+  @@index([approvedById], map: "TimeOffRequest_approvedById_fkey")
+  @@index([employeeId], map: "TimeOffRequest_employeeId_fkey")
+  @@index([hoursBankId], map: "TimeOffRequest_hoursBankId_fkey")
+}
+
+model Project {
+  id            String                @id @default(cuid())
+  name          String
+  clientName    String
+  clientEmail   String?
+  location      String?
+  description   String?
+  status        ProjectStatus         @default(NUEVO)
+  startDate     DateTime
+  endDate       DateTime?
+  progress      Int                   @default(0)
+  accessToken   String                @unique @default(cuid())
+  createdById   String
+  isActive      Boolean               @default(true)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  equipment     Equipment[]
+  equipmentLogs EquipmentLog[]
+  photos        ProjectPhoto[]
+  tasks         ProjectTask[]
+  updates       ProjectUpdate[]
+  requisitions  PurchaseRequisition[]
+  toolCheckouts ToolCheckout[]
+  vales         Vale[]
+}
+
+model ProjectTask {
+  id          String         @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  progress    Int            @default(0)
+  order       Int            @default(0)
+  color       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  photos      ProjectPhoto[]
+  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId], map: "ProjectTask_projectId_fkey")
+}
+
+model ProjectPhoto {
+  id           String       @id @default(cuid())
+  projectId    String
+  taskId       String?
+  url          String
+  caption      String?
+  takenAt      DateTime     @default(now())
+  uploadedById String
+  createdAt    DateTime     @default(now())
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task         ProjectTask? @relation(fields: [taskId], references: [id])
+
+  @@index([projectId], map: "ProjectPhoto_projectId_fkey")
+  @@index([taskId], map: "ProjectPhoto_taskId_fkey")
+}
+
+model ProjectUpdate {
+  id          String   @id @default(cuid())
+  projectId   String
+  note        String
+  createdById String
+  createdAt   DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId], map: "ProjectUpdate_projectId_fkey")
+}
+
+model Announcement {
+  id                 String           @id @default(cuid())
+  title              String
+  content            String
+  type               AnnouncementType @default(GENERAL)
+  targetDepartmentId String?
+  postedById         String
+  expiresAt          DateTime?
+  isActive           Boolean          @default(true)
+  isPinned           Boolean          @default(false)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  targetDepartment   Department?      @relation(fields: [targetDepartmentId], references: [id])
+
+  @@index([targetDepartmentId], map: "Announcement_targetDepartmentId_fkey")
+}
+
+model DC3Record {
+  id             String    @id @default(cuid())
+  employeeId     String
+  courseName     String
+  institution    String?
+  instructor     String?
+  hours          Int?
+  completedAt    DateTime
+  expiresAt      DateTime?
+  certificateUrl String?
+  notes          String?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  employee       Employee  @relation(fields: [employeeId], references: [id])
+
+  @@index([employeeId], map: "DC3Record_employeeId_fkey")
+}
+
+model EPPCatalog {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String?
+  isActive    Boolean     @default(true)
+  records     EPPRecord[]
+}
+
+model EPPRecord {
+  id         String        @id @default(cuid())
+  employeeId String
+  itemId     String
+  brand      String?
+  size       String?
+  quantity   Int           @default(1)
+  condition  ItemCondition @default(BUENA)
+  issuedAt   DateTime      @default(now())
+  returnedAt DateTime?
+  notes      String?
+  issuedById String?
+  createdAt  DateTime      @default(now())
+  employee   Employee      @relation(fields: [employeeId], references: [id])
+  item       EPPCatalog    @relation(fields: [itemId], references: [id])
+
+  @@index([employeeId], map: "EPPRecord_employeeId_fkey")
+  @@index([itemId], map: "EPPRecord_itemId_fkey")
+}
+
+model SystemConfig {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model Tool {
+  id             String          @id @default(cuid())
+  code           String?
+  name           String
+  brand          String?
+  model          String?
+  serialNumber   String?
+  condition      ItemCondition   @default(BUENA)
+  status         InventoryStatus @default(DISPONIBLE)
+  departmentId   String?
+  location       String?
+  notes          String?
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  repairRequests RepairRequest[]
+  department     Department?     @relation(fields: [departmentId], references: [id])
+  checkouts      ToolCheckout[]
+
+  @@index([departmentId], map: "Tool_departmentId_fkey")
+}
+
+model Equipment {
+  id              String          @id @default(cuid())
+  code            String?
+  name            String
+  brand           String?
+  model           String?
+  serialNumber    String?
+  condition       ItemCondition   @default(BUENA)
+  status          InventoryStatus @default(DISPONIBLE)
+  departmentId    String?
+  projectId       String?
+  location        String?
+  notes           String?
+  nextServiceDate DateTime?
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  department      Department?     @relation(fields: [departmentId], references: [id])
+  project         Project?        @relation(fields: [projectId], references: [id])
+  logs            EquipmentLog[]
+  repairRequests  RepairRequest[]
+
+  @@index([departmentId], map: "Equipment_departmentId_fkey")
+  @@index([projectId], map: "Equipment_projectId_fkey")
+}
+
+model ToolCheckout {
+  id             String         @id @default(cuid())
+  toolId         String
+  employeeId     String
+  projectId      String?
+  checkedOutAt   DateTime       @default(now())
+  expectedReturn DateTime?
+  returnedAt     DateTime?
+  conditionOut   ItemCondition  @default(BUENA)
+  conditionIn    ItemCondition?
+  notes          String?
+  approvedById   String?
+  employee       Employee       @relation(fields: [employeeId], references: [id])
+  project        Project?       @relation(fields: [projectId], references: [id])
+  tool           Tool           @relation(fields: [toolId], references: [id])
+
+  @@index([employeeId], map: "ToolCheckout_employeeId_fkey")
+  @@index([projectId], map: "ToolCheckout_projectId_fkey")
+  @@index([toolId], map: "ToolCheckout_toolId_fkey")
+}
+
+model PurchaseRequisition {
+  id            String              @id @default(cuid())
+  title         String
+  description   String?
+  items         Json
+  status        RequisitionStatus   @default(PENDIENTE)
+  priority      RequisitionPriority @default(NORMAL)
+  departmentId  String?
+  projectId     String?
+  requestedById String
+  approvedById  String?
+  approvedAt    DateTime?
+  notes         String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  department    Department?         @relation(fields: [departmentId], references: [id])
+  project       Project?            @relation(fields: [projectId], references: [id])
+
+  @@index([departmentId], map: "PurchaseRequisition_departmentId_fkey")
+  @@index([projectId], map: "PurchaseRequisition_projectId_fkey")
+}
+
+model EquipmentLog {
+  id          String    @id @default(cuid())
+  equipmentId String
+  type        LogType
+  description String
+  projectId   String?
+  createdById String
+  createdAt   DateTime  @default(now())
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  project     Project?  @relation(fields: [projectId], references: [id])
+
+  @@index([equipmentId], map: "EquipmentLog_equipmentId_fkey")
+  @@index([projectId], map: "EquipmentLog_projectId_fkey")
+}
+
+model RepairRequest {
+  id            String              @id @default(cuid())
+  toolId        String?
+  equipmentId   String?
+  description   String
+  priority      RequisitionPriority @default(NORMAL)
+  status        RequisitionStatus   @default(PENDIENTE)
+  requestedById String
+  resolvedAt    DateTime?
+  resolution    String?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  equipment     Equipment?          @relation(fields: [equipmentId], references: [id])
+  tool          Tool?               @relation(fields: [toolId], references: [id])
+
+  @@index([equipmentId], map: "RepairRequest_equipmentId_fkey")
+  @@index([toolId], map: "RepairRequest_toolId_fkey")
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  userId     String?
+  action     AuditAction
+  module     String
+  entityId   String?
+  entityType String?
+  oldData    Json?
+  newData    Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+  user       User?       @relation(fields: [userId], references: [id])
+
+  @@index([userId], map: "AuditLog_userId_fkey")
+}
+
+enum EmployeeType {
+  OPERATIVO
+  SUPERVISOR
+  ADMINISTRATIVO
+}
+
+enum OvertimeStatus {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+}
+
+enum TimeOffStatus {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+  CANCELADO
+}
+
+enum DocumentPermissionLevel {
+  VER
+  COMENTAR
+  EDITAR
+  DESCARGAR
+}
+
+enum ItemCondition {
+  BUENA
+  REGULAR
+  MALA
+  BAJA
+}
+
+enum InventoryStatus {
+  DISPONIBLE
+  ASIGNADO
+  EN_PROYECTO
+  EN_REPARACION
+  BAJA
+}
+
+enum RequisitionStatus {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+  SURTIDO
+}
+
+enum RequisitionPriority {
+  NORMAL
+  URGENTE
+}
+
+enum LogType {
+  SERVICIO
+  INSPECCION
+  INCIDENCIA
+  ENTREGA
+  RECEPCION
+  REPARACION
+}
+
+enum AuditAction {
+  CREAR
+  EDITAR
+  ELIMINAR
+  ACCEDER
+  APROBAR
+  RECHAZAR
+  LOGIN
+  LOGOUT
+}
+
+enum ProjectStatus {
+  NUEVO
+  EN_DESARROLLO
+  CERRADO
+}
+
+enum AnnouncementType {
+  GENERAL
+  URGENTE
+  CUMPLEANOS
+  CAPACITACION
+  FELICITACION
+  OPERACIONES
+}
+
+enum ValeType {
+  COMBUSTIBLE
+  CAJA_CHICA
+  VIATICOS
+  HERRAMIENTA
+}
+
+enum ValeStatus {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+}
+
+model Vale {
+  id              String     @id @default(cuid())
+  type            ValeType   @default(COMBUSTIBLE)
+  employeeId      String
+  projectId       String?
+  concept         String
+  vehicle         String?
+  liters          Decimal?   @db.Decimal(8, 2)
+  amount          Decimal?   @db.Decimal(10, 2)
+  vendor          String?
+  date            DateTime
+  status          ValeStatus @default(PENDIENTE)
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  notes           String?
+  receiptUrl      String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  project    Project?  @relation(fields: [projectId], references: [id])
+  approvedBy Employee? @relation("ValeApprover", fields: [approvedById], references: [id])
+
+  @@index([employeeId], map: "Vale_employeeId_fkey")
+  @@index([projectId], map: "Vale_projectId_fkey")
+  @@index([approvedById], map: "Vale_approvedById_fkey")
+}
