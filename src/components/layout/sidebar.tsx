@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard, Users, Clock, FolderOpen,
   Wrench, HardHat, LogOut, GanttChartSquare, Settings, Receipt,
+  CalendarDays, ClipboardList, UserCheck, Palmtree, Star,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -42,7 +43,8 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
       {
         title: "Operaciones",
         items: [
-          { label: "Proyectos y Gantt", href: "/dashboard/proyectos", icon: GanttChartSquare },
+          { label: "Proyectos", href: "/dashboard/proyectos", icon: GanttChartSquare },
+          { label: "Gantt global", href: "/dashboard/gantt", icon: GanttChartSquare },
           { label: "Herramientas y Equipos", href: "/dashboard/herramientas", icon: Wrench },
           { label: "Vales", href: "/dashboard/vales", icon: Receipt },
         ],
@@ -74,6 +76,8 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
       {
         title: "Recursos Humanos",
         items: [
+          { label: "Asistencia", href: "/dashboard/asistencia", icon: UserCheck },
+          { label: "Vacaciones", href: "/dashboard/vacaciones", icon: Palmtree },
           { label: "Banco de Horas", href: "/dashboard/horas", icon: Clock },
           { label: "DC3 y EPP", href: "/dashboard/dc3", icon: HardHat },
         ],
@@ -81,7 +85,10 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
       {
         title: "Operaciones",
         items: [
-          { label: "Proyectos y Gantt", href: "/dashboard/proyectos", icon: GanttChartSquare },
+          { label: "Proyectos", href: "/dashboard/proyectos", icon: GanttChartSquare },
+          { label: "Gantt global", href: "/dashboard/gantt", icon: GanttChartSquare },
+          { label: "Calendario", href: "/dashboard/calendario", icon: CalendarDays },
+          { label: "Check Lists", href: "/dashboard/checklists", icon: ClipboardList },
           { label: "Herramientas y Equipos", href: "/dashboard/herramientas", icon: Wrench },
           { label: "Vales", href: "/dashboard/vales", icon: Receipt },
         ],
@@ -90,6 +97,12 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
         title: "Documentos",
         items: [
           { label: "Documentos", href: "/dashboard/documentos", icon: FolderOpen },
+        ],
+      },
+      {
+        title: "Ventas",
+        items: [
+          { label: "Encuestas clientes", href: "/dashboard/encuestas", icon: Star },
         ],
       },
       {
@@ -118,6 +131,8 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
         {
           title: "RH",
           items: [
+            { label: "Asistencia", href: "/dashboard/asistencia", icon: UserCheck },
+            { label: "Vacaciones", href: "/dashboard/vacaciones", icon: Palmtree },
             { label: "Banco de Horas", href: "/dashboard/horas", icon: Clock },
             { label: "DC3 y EPP", href: "/dashboard/dc3", icon: HardHat },
           ],
@@ -131,6 +146,8 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
         {
           title: "Administracion",
           items: [
+            { label: "Asistencia", href: "/dashboard/asistencia", icon: UserCheck },
+            { label: "Vacaciones", href: "/dashboard/vacaciones", icon: Palmtree },
             { label: "Banco de Horas", href: "/dashboard/horas", icon: Clock },
             { label: "Vales", href: "/dashboard/vales", icon: Receipt },
           ],
@@ -158,6 +175,8 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
           title: "Operaciones",
           items: [
             { label: "Proyectos y Gantt", href: "/dashboard/proyectos", icon: GanttChartSquare },
+            { label: "Calendario", href: "/dashboard/calendario", icon: CalendarDays },
+            { label: "Check Lists", href: "/dashboard/checklists", icon: ClipboardList },
             { label: "Herramientas y Equipos", href: "/dashboard/herramientas", icon: Wrench },
             { label: "DC3 y EPP", href: "/dashboard/dc3", icon: HardHat },
             { label: "Vales", href: "/dashboard/vales", icon: Receipt },

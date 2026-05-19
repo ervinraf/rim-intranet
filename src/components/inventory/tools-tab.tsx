@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Plus, ArrowRightLeft, RotateCcw, Wrench } from "lucide-react"
+import { Plus, ArrowRightLeft, RotateCcw, Wrench, Printer } from "lucide-react"
 
 const statusConfig = {
   DISPONIBLE: { label: "Disponible", className: "bg-green-100 text-green-700" },
@@ -192,6 +192,11 @@ export function ToolsTab({ tools, departments, projects, employees, isAdmin, sea
                       {tool.status === "DISPONIBLE" && (
                         <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setCheckoutModal(tool)}>
                           <ArrowRightLeft className="w-3 h-3 mr-1" /> Vale salida
+                        </Button>
+                      )}
+                      {tool.status === "ASIGNADO" && active?.id && (
+                        <Button size="sm" variant="ghost" className="h-7 text-xs text-slate-500" onClick={() => window.open(`/vale-salida/${active.id}`, "_blank")}>
+                          <Printer className="w-3 h-3 mr-1" /> Imprimir
                         </Button>
                       )}
                       {tool.status === "ASIGNADO" && (

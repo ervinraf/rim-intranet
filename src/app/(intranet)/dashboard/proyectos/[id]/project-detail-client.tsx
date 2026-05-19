@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react"
 import { GanttChart } from "@/components/gantt/gantt-chart"
+import { ProjectForms } from "@/components/projects/project-forms"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Camera, Link2, Plus, Send, MapPin, User, Calendar, ChevronDown, ChevronUp,
-  FileDown, Mail, MessageCircle,
+  FileDown, Mail, MessageCircle, Star,
 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -230,6 +231,18 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
               <Link2 className="w-4 h-4 mr-1.5" />
               Copiar link
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-amber-700 border-amber-300 hover:bg-amber-50"
+              onClick={() => {
+                const url = `${window.location.origin}/encuesta?project=${project.id}`
+                navigator.clipboard.writeText(url).then(() => alert("Link de encuesta copiado."))
+              }}
+            >
+              <Star className="w-4 h-4 mr-1.5" />
+              Encuesta cliente
+            </Button>
             <Button size="sm" onClick={saveProgress} disabled={saving}>
               {saving ? "Guardando..." : "Guardar avances"}
             </Button>
@@ -429,6 +442,20 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
           </Card>
 
           {/* Enlace para el cliente */}
+          {/* Formatos */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-slate-600">Formatos de proyecto</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProjectForms
+                projectId={project.id}
+                projectName={project.name}
+                isAdmin={isAdmin}
+              />
+            </CardContent>
+          </Card>
+
           {isAdmin && (
             <Card className="border-amber-200 bg-amber-50">
               <CardContent className="p-4">

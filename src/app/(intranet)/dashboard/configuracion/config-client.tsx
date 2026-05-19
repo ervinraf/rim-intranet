@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Upload, CheckCircle, Building2, Clock, Plus, Pencil, Trash2, X } from "lucide-react"
+import { Upload, CheckCircle, Building2, Clock, Plus, Pencil, Trash2, X, Globe } from "lucide-react"
 
 interface Department {
   id: string
@@ -27,11 +27,12 @@ interface Props {
   config: Record<string, string>
   departments: Department[]
   roles: Role[]
+  empresa: Record<string, string>
 }
 
-type Tab = "general" | "departamentos" | "roles"
+type Tab = "general" | "departamentos" | "roles" | "empresa"
 
-export function ConfigClient({ config, departments: initialDepts, roles: initialRoles }: Props) {
+export function ConfigClient({ config, departments: initialDepts, roles: initialRoles, empresa: initialEmpresa }: Props) {
   const [tab, setTab] = useState<Tab>("general")
   const [logoUrl, setLogoUrl] = useState<string | null>(config.company_logo ?? null)
   const [companyName, setCompanyName] = useState(config.company_name ?? "RIM Rigging")
@@ -39,6 +40,20 @@ export function ConfigClient({ config, departments: initialDepts, roles: initial
   const [uploading, setUploading] = useState(false)
   const [saved, setSaved] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Empresa
+  const [empresa, setEmpresa] = useState(initialEmpresa)
+  const [empresaSaved, setEmpresaSaved] = useState(false)
+
+  async function saveEmpresa() {
+    await fetch("/api/system/empresa", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(empresa),
+    })
+    setEmpresaSaved(true)
+    setTimeout(() => setEmpresaSaved(false), 2500)
+  }
 
   // Roles
   const [roles, setRoles] = useState<Role[]>(initialRoles)
@@ -200,6 +215,7 @@ export function ConfigClient({ config, departments: initialDepts, roles: initial
       <div className="flex gap-1 border-b border-slate-200">
         {([
           { id: "general", label: "General" },
+          { id: "empresa", label: "Empresa" },
           { id: "departamentos", label: "Departamentos" },
           { id: "roles", label: "Roles" },
         ] as { id: Tab; label: string }[]).map((t) => (
@@ -302,6 +318,41 @@ export function ConfigClient({ config, departments: initialDepts, roles: initial
               <span className="flex items-center gap-1.5 text-sm text-green-600">
                 <CheckCircle className="w-4 h-4" />
                 Guardado
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === "empresa" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-500">Informacion visible en <strong>/empresa</strong> (publica)</p>
+            <a href="/empresa" target="_blank" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+              <Globe className="w-3.5 h-3.5" /> Ver pagina
+            </a>
+          </div>
+          {[
+            { key: "company_history", label: "Historia de la empresa" },
+            { key: "company_mission", label: "Mision" },
+            { key: "company_vision", label: "Vision" },
+            { key: "company_services", label: "Servicios (uno por linea)" },
+          ].map(({ key, label }) => (
+            <div key={key} className="space-y-1.5">
+              <Label>{label}</Label>
+              <textarea
+                className="w-full min-h-24 border border-slate-200 rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-slate-400"
+                value={empresa[key] ?? ""}
+                onChange={(e) => setEmpresa((p) => ({ ...p, [key]: e.target.value }))}
+                placeholder={`Escribe aqui la ${label.toLowerCase()}...`}
+              />
+            </div>
+          ))}
+          <div className="flex items-center gap-3">
+            <Button onClick={saveEmpresa}>Guardar</Button>
+            {empresaSaved && (
+              <span className="flex items-center gap-1.5 text-sm text-green-600">
+                <CheckCircle className="w-4 h-4" />Guardado
               </span>
             )}
           </div>

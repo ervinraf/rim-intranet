@@ -54,10 +54,14 @@ model User {
   isActive      Boolean    @default(true)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
-  accounts      Account[]
-  auditLogs     AuditLog[]
-  employee      Employee?
-  sessions      Session[]
+  accounts              Account[]
+  auditLogs             AuditLog[]
+  employee              Employee?
+  sessions              Session[]
+  attendanceRegistered  Attendance[]    @relation("AttendanceRegistrar")
+  checkListsCreated     CheckList[]     @relation("CheckListCreator")
+  checkListItemsDone    CheckListItem[] @relation("CheckListItemCompleter")
+  projectForms          ProjectForm[]   @relation("ProjectFormCreator")
 }
 
 model Employee {
@@ -96,8 +100,11 @@ model Employee {
   approvedTimeOffs  TimeOffRequest[]     @relation("TimeOffApprover")
   timeOffRequests   TimeOffRequest[]
   toolCheckouts     ToolCheckout[]
-  vales             Vale[]
-  valesApproved     Vale[]               @relation("ValeApprover")
+  vales              Vale[]
+  valesApproved      Vale[]               @relation("ValeApprover")
+  attendance         Attendance[]
+  vacationRequests   VacationRequest[]
+  vacationsApproved  VacationRequest[]    @relation("VacationApprover")
 
   @@index([departmentId], map: "Employee_departmentId_fkey")
   @@index([roleId], map: "Employee_roleId_fkey")
@@ -312,6 +319,9 @@ model Project {
   requisitions  PurchaseRequisition[]
   toolCheckouts ToolCheckout[]
   vales         Vale[]
+  checkLists    CheckList[]
+  clientSurveys ClientSurvey[]
+  forms         ProjectForm[]
 }
 
 model ProjectTask {
@@ -465,14 +475,18 @@ model Equipment {
   projectId       String?
   location        String?
   notes           String?
-  nextServiceDate DateTime?
-  isActive        Boolean         @default(true)
+  nextServiceDate  DateTime?
+  technicalSpecs   Json?
+  purchaseDate     DateTime?
+  purchasePrice    Decimal?        @db.Decimal(12, 2)
+  isActive         Boolean         @default(true)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   department      Department?     @relation(fields: [departmentId], references: [id])
   project         Project?        @relation(fields: [projectId], references: [id])
   logs            EquipmentLog[]
   repairRequests  RepairRequest[]
+  checkLists      CheckList[]
 
   @@index([departmentId], map: "Equipment_departmentId_fkey")
   @@index([projectId], map: "Equipment_projectId_fkey")
@@ -700,4 +714,141 @@ model Vale {
   @@index([employeeId], map: "Vale_employeeId_fkey")
   @@index([projectId], map: "Vale_projectId_fkey")
   @@index([approvedById], map: "Vale_approvedById_fkey")
+}
+
+enum ProjectFormType {
+  LEVANTAMIENTO
+  CIERRE
+}
+
+model ProjectForm {
+  id          String          @id @default(cuid())
+  projectId   String
+  type        ProjectFormType
+  data        Json
+  createdById String
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User    @relation("ProjectFormCreator", fields: [createdById], references: [id])
+
+  @@index([projectId], map: "ProjectForm_projectId_fkey")
+  @@index([createdById], map: "ProjectForm_createdById_fkey")
+}
+
+enum VacationStatus {
+  PENDIENTE
+  APROBADO
+  RECHAZADO
+  CANCELADO
+}
+
+model VacationRequest {
+  id              String         @id @default(cuid())
+  employeeId      String
+  dateFrom        DateTime
+  dateTo          DateTime
+  daysRequested   Int
+  reason          String?
+  status          VacationStatus @default(PENDIENTE)
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  employee   Employee  @relation(fields: [employeeId], references: [id])
+  approvedBy Employee? @relation("VacationApprover", fields: [approvedById], references: [id])
+
+  @@index([employeeId], map: "VacationRequest_employeeId_fkey")
+  @@index([approvedById], map: "VacationRequest_approvedById_fkey")
+}
+
+enum AttendanceType {
+  NORMAL
+  TARDANZA
+  FALTA
+  VACACIONES
+  PERMISO
+  INCAPACIDAD
+}
+
+model Attendance {
+  id             String         @id @default(cuid())
+  employeeId     String
+  date           DateTime
+  checkIn        DateTime?
+  checkOut       DateTime?
+  type           AttendanceType @default(NORMAL)
+  notes          String?
+  registeredById String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  employee     Employee  @relation(fields: [employeeId], references: [id])
+  registeredBy User?     @relation("AttendanceRegistrar", fields: [registeredById], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([employeeId], map: "Attendance_employeeId_fkey")
+  @@index([registeredById], map: "Attendance_registeredById_fkey")
+}
+
+enum CheckListType {
+  OPERATIVO
+  SEGURIDAD
+  MANTENIMIENTO
+  INSPECCION
+}
+
+model CheckList {
+  id          String        @id @default(cuid())
+  title       String
+  type        CheckListType @default(OPERATIVO)
+  projectId   String?
+  equipmentId String?
+  createdById String
+  completedAt DateTime?
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  items     CheckListItem[]
+  project   Project?   @relation(fields: [projectId], references: [id])
+  equipment Equipment? @relation(fields: [equipmentId], references: [id])
+  createdBy User       @relation("CheckListCreator", fields: [createdById], references: [id])
+
+  @@index([projectId], map: "CheckList_projectId_fkey")
+  @@index([equipmentId], map: "CheckList_equipmentId_fkey")
+  @@index([createdById], map: "CheckList_createdById_fkey")
+}
+
+model CheckListItem {
+  id            String    @id @default(cuid())
+  checkListId   String
+  description   String
+  isCompleted   Boolean   @default(false)
+  completedAt   DateTime?
+  completedById String?
+  order         Int       @default(0)
+  createdAt     DateTime  @default(now())
+
+  checkList   CheckList @relation(fields: [checkListId], references: [id], onDelete: Cascade)
+  completedBy User?     @relation("CheckListItemCompleter", fields: [completedById], references: [id])
+
+  @@index([checkListId], map: "CheckListItem_checkListId_fkey")
+  @@index([completedById], map: "CheckListItem_completedById_fkey")
+}
+
+model ClientSurvey {
+  id          String   @id @default(cuid())
+  projectId   String
+  clientName  String
+  rating      Int
+  comment     String?
+  submittedAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id])
+
+  @@index([projectId], map: "ClientSurvey_projectId_fkey")
 }

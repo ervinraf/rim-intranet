@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard, Users, Clock, FolderOpen,
   Wrench, HardHat, LogOut, GanttChartSquare, Settings,
-  Menu, X, Receipt,
+  Menu, X, Receipt, CalendarDays, ClipboardList, UserCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -129,7 +129,7 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
     case "Ventas":
       return [base, { title: "Ventas", items: [{ label: "Proyectos y Gantt", href: "/dashboard/proyectos", icon: GanttChartSquare }, valesSection] }, docs]
     case "Operaciones":
-      return [base, { title: "Operaciones", items: [{ label: "Proyectos y Gantt", href: "/dashboard/proyectos", icon: GanttChartSquare }, { label: "Herramientas y Equipos", href: "/dashboard/herramientas", icon: Wrench }, { label: "DC3 y EPP", href: "/dashboard/dc3", icon: HardHat }, valesSection] }, docs]
+      return [base, { title: "Operaciones", items: [{ label: "Proyectos y Gantt", href: "/dashboard/proyectos", icon: GanttChartSquare }, { label: "Calendario", href: "/dashboard/calendario", icon: CalendarDays }, { label: "Check Lists", href: "/dashboard/checklists", icon: ClipboardList }, { label: "Herramientas y Equipos", href: "/dashboard/herramientas", icon: Wrench }, { label: "DC3 y EPP", href: "/dashboard/dc3", icon: HardHat }, valesSection] }, docs]
     case "Almacen":
       return [base, { title: "Almacen", items: [{ label: "Herramientas y Equipos", href: "/dashboard/herramientas", icon: Wrench }, valesSection] }, docs]
     case "Taller":

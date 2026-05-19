@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Plus, FileText, ChevronDown, ChevronUp } from "lucide-react"
+import { Plus, FileText, ChevronDown, ChevronUp, ClipboardList, Printer } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -38,9 +38,39 @@ export function EquipmentTab({ equipment, departments, projects, isAdmin, search
   const [showAddForm, setShowAddForm] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [logModal, setLogModal] = useState<any | null>(null)
+  const [techModal, setTechModal] = useState<any | null>(null)
   const [newEquip, setNewEquip] = useState({ name: "", code: "", brand: "", model: "", serialNumber: "", departmentId: "", nextServiceDate: "" })
   const [logData, setLogData] = useState({ type: "INSPECCION", description: "", projectId: "" })
   const [loading, setLoading] = useState(false)
+
+  const defaultSpecs = { capacidad: "", pesoBruto: "", dimensiones: "", potencia: "", voltaje: "", combustible: "", certificaciones: "", añoFabricacion: "", noEconomico: "", observaciones: "" }
+  const [techData, setTechData] = useState<Record<string, string>>(defaultSpecs)
+  const [purchaseDate, setPurchaseDate] = useState("")
+  const [purchasePrice, setPurchasePrice] = useState("")
+
+  async function saveTech() {
+    if (!techModal) return
+    setLoading(true)
+    const res = await fetch(`/api/equipment/${techModal.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ technicalSpecs: techData, purchaseDate: purchaseDate || null, purchasePrice: purchasePrice || null }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      onUpdate(equipment.map((e) => e.id === updated.id ? { ...e, ...updated } : e))
+      setTechModal(null)
+    }
+    setLoading(false)
+  }
+
+  function openTechModal(eq: any) {
+    const specs = (eq.technicalSpecs as Record<string, string>) ?? {}
+    setTechData({ ...defaultSpecs, ...specs })
+    setPurchaseDate(eq.purchaseDate ? new Date(eq.purchaseDate).toISOString().slice(0, 10) : "")
+    setPurchasePrice(eq.purchasePrice ? String(eq.purchasePrice) : "")
+    setTechModal(eq)
+  }
 
   const filtered = useMemo(() =>
     equipment.filter((e) =>
@@ -159,6 +189,9 @@ export function EquipmentTab({ equipment, departments, projects, isAdmin, search
                 <div className="flex items-center gap-3">
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${st?.className}`}>{st?.label}</span>
                   {eq.project && <span className="text-xs text-slate-500">{eq.project.name}</span>}
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); openTechModal(eq) }}>
+                    <ClipboardList className="w-3 h-3 mr-1" /> Hoja tecnica
+                  </Button>
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={(e) => { e.stopPropagation(); setLogModal(eq) }}>
                     <FileText className="w-3 h-3 mr-1" /> Bitacora
                   </Button>
@@ -186,6 +219,70 @@ export function EquipmentTab({ equipment, departments, projects, isAdmin, search
           )
         })}
       </div>
+
+      {/* Hoja tecnica modal */}
+      {techModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-xl my-4">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold text-slate-900">Hoja Tecnica</h2>
+                <p className="text-sm text-slate-500 mt-0.5">{techModal.name}</p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(`/hoja-tecnica/${techModal.id}`, "_blank")}
+              >
+                <Printer className="w-3.5 h-3.5 mr-1" /> Imprimir
+              </Button>
+            </div>
+            <div className="px-6 py-4 grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto">
+              {[
+                ["noEconomico", "No. Economico"],
+                ["capacidad", "Capacidad"],
+                ["pesoBruto", "Peso bruto"],
+                ["dimensiones", "Dimensiones (L x A x H)"],
+                ["potencia", "Potencia"],
+                ["voltaje", "Voltaje"],
+                ["combustible", "Combustible"],
+                ["certificaciones", "Certificaciones"],
+                ["añoFabricacion", "Año de fabricacion"],
+              ].map(([key, label]) => (
+                <div key={key} className="space-y-1">
+                  <Label className="text-xs">{label}</Label>
+                  <Input
+                    value={techData[key] ?? ""}
+                    onChange={(e) => setTechData((p) => ({ ...p, [key]: e.target.value }))}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              ))}
+              <div className="space-y-1">
+                <Label className="text-xs">Fecha de compra</Label>
+                <Input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Costo de compra ($)</Label>
+                <Input type="number" step="0.01" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1 col-span-2">
+                <Label className="text-xs">Observaciones</Label>
+                <Input
+                  value={techData.observaciones ?? ""}
+                  onChange={(e) => setTechData((p) => ({ ...p, observaciones: e.target.value }))}
+                  className="h-8 text-sm"
+                  placeholder="Notas adicionales..."
+                />
+              </div>
+            </div>
+            <div className="flex gap-2 px-6 py-4 border-t border-slate-200">
+              <Button variant="outline" onClick={() => setTechModal(null)} className="flex-1">Cancelar</Button>
+              <Button onClick={saveTech} disabled={loading} className="flex-1">Guardar hoja tecnica</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Log modal */}
       {logModal && (
