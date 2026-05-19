@@ -24,6 +24,7 @@ const updateSchema = z.object({
   isActive: z.boolean().optional(),
   newPassword: z.string().min(6).optional(),
   workdayHours: z.union([z.literal(8), z.literal(9)]).optional(),
+  photoUrl: z.string().optional().nullable(),
   licenciaNumero: z.string().optional().nullable(),
   licenciaVencimiento: z.string().optional().nullable(),
   licenciaFotoUrl: z.string().optional().nullable(),
@@ -81,7 +82,7 @@ export async function PATCH(
   const parsed = updateSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const { newPassword, hireDate, birthDate, paterno, materno, nombres, nombres2, ...rest } = parsed.data
+  const { newPassword, hireDate, birthDate, licenciaVencimiento, paterno, materno, nombres, nombres2, ...rest } = parsed.data
 
   const existing = await prisma.employee.findUnique({ where: { id } })
   if (!existing) return NextResponse.json({ error: "Empleado no encontrado" }, { status: 404 })
@@ -122,6 +123,7 @@ export async function PATCH(
         ...rest,
         hireDate: hireDate ? new Date(hireDate) : hireDate === null ? null : undefined,
         birthDate: birthDate ? new Date(birthDate) : birthDate === null ? null : undefined,
+        licenciaVencimiento: licenciaVencimiento ? new Date(licenciaVencimiento) : licenciaVencimiento === null ? null : undefined,
       },
       include: {
         department: { select: { name: true } },

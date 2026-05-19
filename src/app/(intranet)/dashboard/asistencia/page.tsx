@@ -10,8 +10,8 @@ export default async function AsistenciaPage() {
   const isAdmin = ["SUPERADMIN", "ADMIN", "GERENTE"].includes(session.user.role ?? "")
 
   const now = new Date()
-  const from = new Date(now.getFullYear(), now.getMonth(), 1)
-  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+  const from = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const to = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59)
 
   const [records, employees, departments] = await Promise.all([
     prisma.attendance.findMany({

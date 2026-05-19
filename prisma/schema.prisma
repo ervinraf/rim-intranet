@@ -75,6 +75,7 @@ model Employee {
   fullName          String
   employeeType      EmployeeType         @default(OPERATIVO)
   workdayHours        Int                  @default(8)
+  photoUrl            String?
   licenciaNumero      String?
   licenciaVencimiento DateTime?
   licenciaFotoUrl     String?

@@ -31,6 +31,7 @@ interface Employee {
   position?: string | null
   phone?: string | null
   extension?: string | null
+  photoUrl?: string | null
   isActive: boolean
   departmentId?: string | null
   department?: { name: string } | null
@@ -189,8 +190,12 @@ export function EmployeeListClient({ employees: initial, departments, roles, isA
                       className="block bg-white border border-slate-200 rounded-xl p-4 hover:shadow-md hover:border-slate-300 transition-all"
                     >
                       <div className="flex items-start justify-between mb-3">
-                        <div className="w-10 h-10 rounded-full bg-slate-900 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                          {emp.paterno.slice(0, 1)}{emp.nombres.slice(0, 1)}
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-900 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+                          {emp.photoUrl ? (
+                            <img src={emp.photoUrl} alt={emp.fullName} className="w-full h-full object-cover" />
+                          ) : (
+                            <>{emp.paterno.slice(0, 1)}{emp.nombres.slice(0, 1)}</>
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5">
                           {!emp.isActive && (

@@ -51,6 +51,7 @@ interface Employee {
   isActive: boolean
   departmentId?: string | null
   roleId?: string | null
+  photoUrl?: string | null
   licenciaNumero?: string | null
   licenciaVencimiento?: string | null
   licenciaFotoUrl?: string | null
@@ -80,6 +81,9 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
   })
   const [licFile, setLicFile] = useState<File | null>(null)
   const [savingLic, setSavingLic] = useState(false)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(initial.photoUrl ?? null)
 
   const typeCfg = typeLabels[employee.employeeType]
 
@@ -133,6 +137,25 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
     setSavingLic(false)
   }
 
+  async function uploadPhoto(file: File) {
+    setUploadingPhoto(true)
+    const fd = new FormData()
+    fd.append("file", file)
+    fd.append("folder", `empleados/${employee.id}`)
+    const r = await fetch("/api/upload", { method: "POST", body: fd })
+    if (r.ok) {
+      const d = await r.json()
+      await fetch(`/api/employees/${employee.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoUrl: d.url }),
+      })
+      setEmployee((e) => ({ ...e, photoUrl: d.url }))
+      setPhotoPreview(d.url)
+    }
+    setUploadingPhoto(false)
+  }
+
   if (editing) {
     return (
       <div className="p-8 max-w-2xl">
@@ -180,9 +203,36 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
         {/* Profile header */}
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-slate-900 flex items-center justify-center text-white text-xl font-bold">
-              {employee.paterno.slice(0, 1)}{employee.nombres.slice(0, 1)}
-            </div>
+            <label className={`relative w-20 h-20 rounded-2xl overflow-hidden cursor-pointer group ${isAdmin ? "" : "cursor-default"}`}>
+              {photoPreview ? (
+                <img src={photoPreview} alt={employee.fullName} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-slate-900 flex items-center justify-center text-white text-2xl font-bold">
+                  {employee.paterno.slice(0, 1)}{employee.nombres.slice(0, 1)}
+                </div>
+              )}
+              {isAdmin && (
+                <>
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    {uploadingPhoto ? (
+                      <span className="text-white text-xs">...</span>
+                    ) : (
+                      <Upload className="w-5 h-5 text-white" />
+                    )}
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={uploadingPhoto}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (f) uploadPhoto(f)
+                    }}
+                  />
+                </>
+              )}
+            </label>
             <div>
               <div className="flex items-center gap-2 mb-0.5">
                 <h1 className="text-2xl font-semibold text-slate-900">{employee.fullName}</h1>
