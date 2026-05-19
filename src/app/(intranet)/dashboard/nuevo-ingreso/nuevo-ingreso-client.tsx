@@ -11,8 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { Plus, CheckCircle2, Circle, UserPlus, ChevronDown, ChevronRight, Trash2, ClipboardList } from "lucide-react"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { fmtDate } from "@/lib/utils"
 
 interface OnboardingItem {
   id: string
@@ -258,7 +257,7 @@ export function NuevoIngresoClient({ onboardings: initial, availableEmployees, i
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {o.employee.department?.name ?? "Sin departamento"} · Inicio:{" "}
-                    {format(new Date(o.startDate), "d 'de' MMMM yyyy", { locale: es })}
+                    {fmtDate(o.startDate)}
                   </p>
 
                   {/* Progress bar */}
@@ -325,7 +324,7 @@ export function NuevoIngresoClient({ onboardings: initial, availableEmployees, i
                                 </span>
                                 {item.doneAt && (
                                   <span className="text-xs text-green-500 ml-2">
-                                    {format(new Date(item.doneAt), "d MMM", { locale: es })}
+                                    {fmtDate(item.doneAt, "d MMM")}
                                   </span>
                                 )}
                               </div>

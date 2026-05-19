@@ -20,7 +20,17 @@ export async function POST(req: NextRequest) {
 
   const ext = file.name.split(".").pop() ?? "bin"
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const url = await uploadFile(file, folder, filename)
+
+  let url: string
+  try {
+    url = await uploadFile(file, folder, filename)
+  } catch (err) {
+    console.error("Upload error:", err)
+    return NextResponse.json(
+      { error: "Almacenamiento no configurado. Contacta al administrador." },
+      { status: 500 }
+    )
+  }
 
   return NextResponse.json({ url })
 }

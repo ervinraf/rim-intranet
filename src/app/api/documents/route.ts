@@ -100,7 +100,18 @@ export async function POST(req: NextRequest) {
   const folder = departmentId ?? "general"
   const ext = file.name.split(".").pop() ?? "bin"
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-  const fileUrl = await uploadFile(file, `documents/${folder}`, filename)
+
+  let fileUrl: string
+  try {
+    fileUrl = await uploadFile(file, `documents/${folder}`, filename)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error("Upload error:", msg)
+    return NextResponse.json(
+      { error: `Error de almacenamiento: ${msg}` },
+      { status: 500 }
+    )
+  }
 
   const document = await prisma.document.create({
     data: {

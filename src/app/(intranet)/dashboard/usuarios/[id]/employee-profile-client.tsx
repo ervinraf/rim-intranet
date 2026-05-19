@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Clock, Mail, Phone, Building2, Calendar, Edit2, Power, CreditCard, Upload, AlertTriangle } from "lucide-react"
-import { format, differenceInDays, isPast } from "date-fns"
+import { differenceInDays, isPast } from "date-fns"
 import { es } from "date-fns/locale"
+import { fmtDate, parseDate } from "@/lib/utils"
 
 const typeLabels = {
   OPERATIVO: { label: "Operativo", className: "bg-blue-100 text-blue-700" },
@@ -293,13 +294,13 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
                 {employee.hireDate && (
                   <div className="flex items-center gap-2 text-slate-600">
                     <Calendar className="w-4 h-4 text-slate-400" />
-                    Ingreso: {format(new Date(employee.hireDate), "d 'de' MMMM yyyy", { locale: es })}
+                    Ingreso: {fmtDate(employee.hireDate)}
                   </div>
                 )}
                 {employee.birthDate && (
                   <div className="flex items-center gap-2 text-slate-600">
                     <Calendar className="w-4 h-4 text-slate-400" />
-                    Nacimiento: {format(new Date(employee.birthDate), "d 'de' MMMM yyyy", { locale: es })}
+                    Nacimiento: {fmtDate(employee.birthDate)}
                   </div>
                 )}
                 {employee.itemNumber && (
@@ -444,7 +445,7 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-slate-800">{employee.licenciaNumero}</p>
                     {employee.licenciaVencimiento && (() => {
-                      const venc = new Date(employee.licenciaVencimiento)
+                      const venc = parseDate(employee.licenciaVencimiento)!
                       const dias = differenceInDays(venc, new Date())
                       const expired = isPast(venc)
                       return (
@@ -458,7 +459,7 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
                             ? "Vencida"
                             : dias <= 30
                             ? `Vence en ${dias} dias`
-                            : `Vigente hasta ${format(venc, "d MMM yyyy", { locale: es })}`}
+                            : `Vigente hasta ${fmtDate(employee.licenciaVencimiento, "d MMM yyyy")}`}
                         </div>
                       )
                     })()}

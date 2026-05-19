@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select"
 import { format, differenceInCalendarDays, isAfter, isBefore, startOfYear, endOfYear } from "date-fns"
 import { es } from "date-fns/locale"
+import { fmtDate } from "@/lib/utils"
 
 type VacationStatus = "PENDIENTE" | "APROBADO" | "RECHAZADO" | "CANCELADO"
 
@@ -374,8 +375,8 @@ export function VacacionesClient({ requests: initial, employees, isAdmin, hasEmp
                     <p className="text-sm font-medium text-slate-900">{r.employee.fullName}</p>
                   )}
                   <p className="text-sm text-slate-700">
-                    {format(new Date(r.dateFrom), "d 'de' MMMM", { locale: es })} →{" "}
-                    {format(new Date(r.dateTo), "d 'de' MMMM yyyy", { locale: es })}
+                    {fmtDate(r.dateFrom, "d 'de' MMMM")} →{" "}
+                    {fmtDate(r.dateTo, "d 'de' MMMM yyyy")}
                     <span className="text-slate-500 ml-2">
                       ({r.daysRequested} dia{r.daysRequested !== 1 ? "s" : ""})
                     </span>
