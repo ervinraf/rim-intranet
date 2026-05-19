@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, CheckCircle, X, Palmtree } from "lucide-react"
-import { format, differenceInCalendarDays } from "date-fns"
+import { Plus, CheckCircle, X, Palmtree, Clock, CalendarCheck, CalendarClock, CalendarX } from "lucide-react"
+import { format, differenceInCalendarDays, isAfter, isBefore, startOfYear, endOfYear } from "date-fns"
 import { es } from "date-fns/locale"
 
 type VacationStatus = "PENDIENTE" | "APROBADO" | "RECHAZADO" | "CANCELADO"
@@ -39,6 +39,21 @@ interface Props {
   hasEmployee: boolean
 }
 
+function StatCard({ label, value, sub, icon: Icon, color }: { label: string; value: number | string; sub?: string; icon: React.ElementType; color: string }) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 flex items-center gap-4">
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${color}`}>
+        <Icon className="w-5 h-5" />
+      </div>
+      <div>
+        <p className="text-2xl font-bold text-slate-900">{value}</p>
+        <p className="text-sm text-slate-500 leading-tight">{label}</p>
+        {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
+      </div>
+    </div>
+  )
+}
+
 export function VacacionesClient({ requests: initial, isAdmin, hasEmployee }: Props) {
   const [requests, setRequests] = useState<VacationRequest[]>(initial)
   const [showForm, setShowForm] = useState(false)
@@ -46,8 +61,49 @@ export function VacacionesClient({ requests: initial, isAdmin, hasEmployee }: Pr
   const [loading, setLoading] = useState(false)
   const [rejectingId, setRejectingId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState("")
+  const [selectedEmployee, setSelectedEmployee] = useState<string>("all")
+
+  const today = new Date()
+  const yearStart = startOfYear(today)
+  const yearEnd = endOfYear(today)
+
+  // Stats globales (admin) o propias (empleado)
+  const stats = {
+    pendientesDisfrutar: requests
+      .filter((r) => r.status === "APROBADO" && isAfter(new Date(r.dateFrom), today))
+      .reduce((s, r) => s + r.daysRequested, 0),
+    disfrutadosAnio: requests
+      .filter((r) => r.status === "APROBADO" && isBefore(new Date(r.dateTo), today) && new Date(r.dateTo) >= yearStart)
+      .reduce((s, r) => s + r.daysRequested, 0),
+    enEspera: requests
+      .filter((r) => r.status === "PENDIENTE")
+      .reduce((s, r) => s + r.daysRequested, 0),
+    totalAnio: requests
+      .filter((r) => r.status === "APROBADO" && new Date(r.dateFrom) >= yearStart && new Date(r.dateFrom) <= yearEnd)
+      .reduce((s, r) => s + r.daysRequested, 0),
+  }
+
+  // Resumen por empleado (solo admin)
+  const byEmployee = isAdmin
+    ? Array.from(
+        requests.reduce((map, r) => {
+          const key = r.employee.fullName
+          const dept = r.employee.department?.name ?? "Sin depto"
+          if (!map.has(key)) map.set(key, { name: key, dept, pendientes: 0, disfrutados: 0, enEspera: 0 })
+          const e = map.get(key)!
+          if (r.status === "APROBADO" && isAfter(new Date(r.dateFrom), today)) e.pendientes += r.daysRequested
+          if (r.status === "APROBADO" && isBefore(new Date(r.dateTo), today)) e.disfrutados += r.daysRequested
+          if (r.status === "PENDIENTE") e.enEspera += r.daysRequested
+          return map
+        }, new Map<string, { name: string; dept: string; pendientes: number; disfrutados: number; enEspera: number }>())
+      ).sort((a, b) => a[1].name.localeCompare(b[1].name))
+    : []
 
   const pendingCount = requests.filter((r) => r.status === "PENDIENTE").length
+
+  const filteredRequests = isAdmin && selectedEmployee !== "all"
+    ? requests.filter((r) => r.employee.fullName === selectedEmployee)
+    : requests
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -105,6 +161,83 @@ export function VacacionesClient({ requests: initial, isAdmin, hasEmployee }: Pr
         )}
       </div>
 
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard
+          label="Pendientes de disfrutar"
+          value={stats.pendientesDisfrutar}
+          sub="dias aprobados proximos"
+          icon={CalendarClock}
+          color="bg-blue-50 text-blue-600"
+        />
+        <StatCard
+          label="Disfrutados este ano"
+          value={stats.disfrutadosAnio}
+          sub="dias tomados en el ano"
+          icon={CalendarCheck}
+          color="bg-green-50 text-green-600"
+        />
+        <StatCard
+          label="En espera"
+          value={stats.enEspera}
+          sub="dias pendientes de aprobar"
+          icon={Clock}
+          color="bg-amber-50 text-amber-600"
+        />
+        <StatCard
+          label="Total aprobado este ano"
+          value={stats.totalAnio}
+          sub="dias aprobados en el ano"
+          icon={Palmtree}
+          color="bg-emerald-50 text-emerald-600"
+        />
+      </div>
+
+      {/* Resumen por empleado (solo admin) */}
+      {isAdmin && byEmployee.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100">
+            <p className="text-sm font-medium text-slate-700">Resumen por empleado</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-slate-50">
+                  <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Empleado</th>
+                  <th className="text-left px-4 py-2.5 text-slate-500 font-medium">Departamento</th>
+                  <th className="text-right px-4 py-2.5 text-blue-500 font-medium">Pend. disfrutar</th>
+                  <th className="text-right px-4 py-2.5 text-green-500 font-medium">Disfrutados</th>
+                  <th className="text-right px-4 py-2.5 text-amber-500 font-medium">En espera</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {byEmployee.map(([, e]) => (
+                  <tr
+                    key={e.name}
+                    className={`hover:bg-slate-50 cursor-pointer transition-colors ${selectedEmployee === e.name ? "bg-slate-50" : ""}`}
+                    onClick={() => setSelectedEmployee(selectedEmployee === e.name ? "all" : e.name)}
+                  >
+                    <td className="px-4 py-2.5 text-slate-800 font-medium">{e.name}</td>
+                    <td className="px-4 py-2.5 text-slate-500">{e.dept}</td>
+                    <td className="px-4 py-2.5 text-right text-blue-600 font-medium">{e.pendientes}</td>
+                    <td className="px-4 py-2.5 text-right text-green-600 font-medium">{e.disfrutados}</td>
+                    <td className="px-4 py-2.5 text-right text-amber-600 font-medium">{e.enEspera}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {selectedEmployee !== "all" && (
+            <div className="px-4 py-2 border-t border-slate-100 flex items-center gap-2">
+              <span className="text-xs text-slate-500">Mostrando solicitudes de: <strong>{selectedEmployee}</strong></span>
+              <button type="button" className="text-xs text-slate-400 hover:text-slate-600 underline" onClick={() => setSelectedEmployee("all")}>
+                Ver todos
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {showForm && (
         <Card>
           <CardContent className="pt-4">
@@ -138,13 +271,13 @@ export function VacacionesClient({ requests: initial, isAdmin, hasEmployee }: Pr
       )}
 
       <div className="space-y-2">
-        {requests.length === 0 && (
+        {filteredRequests.length === 0 && (
           <div className="text-center py-12">
             <Palmtree className="w-10 h-10 text-slate-300 mx-auto mb-2" />
             <p className="text-sm text-slate-400">Sin solicitudes de vacaciones</p>
           </div>
         )}
-        {requests.map((r) => {
+        {filteredRequests.map((r) => {
           const sc = statusConfig[r.status]
           return (
             <div key={r.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3">
