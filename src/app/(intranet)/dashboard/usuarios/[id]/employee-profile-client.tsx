@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Clock, Mail, Phone, Building2, Calendar, Edit2, Power, CreditCard, Upload, AlertTriangle } from "lucide-react"
 import { differenceInDays, isPast } from "date-fns"
-import { es } from "date-fns/locale"
 import { fmtDate, parseDate } from "@/lib/utils"
 
 const typeLabels = {
@@ -348,7 +347,7 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
                       return (
                         <div key={r.id} className="px-5 py-2.5 flex items-center justify-between text-sm">
                           <span className="text-slate-600">
-                            Sem. {format(new Date(r.weekStart), "d MMM", { locale: es })} — {r.hoursWorked} hrs
+                            Sem. {fmtDate(r.weekStart, "d MMM")} — {r.hoursWorked} hrs
                           </span>
                           <div className="flex items-center gap-2">
                             {r.status === "APROBADO" && (
