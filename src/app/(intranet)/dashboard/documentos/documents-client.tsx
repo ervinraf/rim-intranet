@@ -3,11 +3,7 @@
 import { useState, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select"
-import { Search, Upload, FolderOpen, Building2 } from "lucide-react"
+import { Search, Upload, FolderOpen, Folder, Building2 } from "lucide-react"
 import { DocumentCard } from "@/components/documents/document-card"
 import { UploadModal } from "@/components/documents/upload-modal"
 
@@ -40,39 +36,37 @@ interface Props {
   userDeptId: string | null
 }
 
-const levelConfig = {
-  VER:       { label: "Solo ver",   className: "bg-slate-100 text-slate-600" },
-  COMENTAR:  { label: "Comentar",   className: "bg-blue-100 text-blue-700" },
-  EDITAR:    { label: "Editar",     className: "bg-amber-100 text-amber-700" },
-  DESCARGAR: { label: "Descargar",  className: "bg-green-100 text-green-700" },
-}
-
 export function DocumentsClient({ documents: initial, departments, categories, isAdmin, userDeptId }: Props) {
   const [documents, setDocuments] = useState(initial)
   const [search, setSearch] = useState("")
-  const [filterDept, setFilterDept] = useState("all")
-  const [filterCat, setFilterCat] = useState("all")
   const [showUpload, setShowUpload] = useState(false)
+
+  // Departamento activo: para no-admin empieza en su depto, para admin en "all"
+  const [activeDept, setActiveDept] = useState<string>(
+    !isAdmin && userDeptId ? userDeptId : "all"
+  )
+
+  // Deptos que tienen documentos
+  const deptOptions = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; count: number }>()
+    for (const doc of documents) {
+      const id = doc.department?.id ?? "general"
+      const name = doc.department?.name ?? "General"
+      if (!map.has(id)) map.set(id, { id, name, count: 0 })
+      map.get(id)!.count++
+    }
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [documents])
 
   const filtered = useMemo(() => {
     return documents.filter((d) => {
       const matchSearch = !search || d.name.toLowerCase().includes(search.toLowerCase())
-      const matchDept = filterDept === "all" || d.department?.id === filterDept
-      const matchCat = filterCat === "all" || d.category?.id === filterCat
-      return matchSearch && matchDept && matchCat
+      const matchDept =
+        activeDept === "all" ||
+        (d.department?.id ?? "general") === activeDept
+      return matchSearch && matchDept
     })
-  }, [documents, search, filterDept, filterCat])
-
-  // Agrupar por departamento
-  const byDept = useMemo(() => {
-    const map: Record<string, Doc[]> = {}
-    for (const doc of filtered) {
-      const key = doc.department?.name ?? "General"
-      if (!map[key]) map[key] = []
-      map[key].push(doc)
-    }
-    return map
-  }, [filtered])
+  }, [documents, search, activeDept])
 
   function handleUploadSuccess(newDoc: Doc) {
     setDocuments((prev) => [newDoc, ...prev])
@@ -88,24 +82,76 @@ export function DocumentsClient({ documents: initial, departments, categories, i
   }
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Documentos</h1>
-          <p className="text-slate-500 mt-1 text-sm">{documents.length} documentos</p>
-        </div>
-        {isAdmin && (
-          <Button onClick={() => setShowUpload(true)}>
-            <Upload className="w-4 h-4 mr-2" />
-            Subir documento
-          </Button>
-        )}
-      </div>
+    <div className="flex h-full min-h-screen">
+      {/* Sidebar de departamentos */}
+      <aside className="w-56 flex-shrink-0 border-r border-slate-200 bg-slate-50 p-4 space-y-1">
+        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-3">Departamentos</p>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-6">
-        <div className="relative flex-1 min-w-52">
+        {isAdmin && (
+          <button
+            onClick={() => setActiveDept("all")}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left ${
+              activeDept === "all"
+                ? "bg-slate-800 text-white"
+                : "text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            <Building2 className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">Todos</span>
+            <span className={`ml-auto text-xs ${activeDept === "all" ? "text-slate-300" : "text-slate-400"}`}>
+              {documents.length}
+            </span>
+          </button>
+        )}
+
+        {deptOptions.map((dept) => (
+          <button
+            key={dept.id}
+            onClick={() => setActiveDept(dept.id)}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left ${
+              activeDept === dept.id
+                ? "bg-slate-800 text-white"
+                : "text-slate-600 hover:bg-slate-200"
+            }`}
+          >
+            {activeDept === dept.id
+              ? <FolderOpen className="w-4 h-4 flex-shrink-0" />
+              : <Folder className="w-4 h-4 flex-shrink-0" />
+            }
+            <span className="truncate">{dept.name}</span>
+            <span className={`ml-auto text-xs ${activeDept === dept.id ? "text-slate-300" : "text-slate-400"}`}>
+              {dept.count}
+            </span>
+          </button>
+        ))}
+
+        {deptOptions.length === 0 && (
+          <p className="text-xs text-slate-400 px-3 py-2">Sin documentos</p>
+        )}
+      </aside>
+
+      {/* Contenido principal */}
+      <div className="flex-1 p-8 min-w-0">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">
+              {activeDept === "all"
+                ? "Todos los documentos"
+                : deptOptions.find((d) => d.id === activeDept)?.name ?? "Documentos"}
+            </h1>
+            <p className="text-slate-500 mt-1 text-sm">{filtered.length} documentos</p>
+          </div>
+          {isAdmin && (
+            <Button onClick={() => setShowUpload(true)}>
+              <Upload className="w-4 h-4 mr-2" />
+              Subir documento
+            </Button>
+          )}
+        </div>
+
+        {/* Busqueda */}
+        <div className="relative max-w-sm mb-6">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             placeholder="Buscar documento..."
@@ -114,71 +160,33 @@ export function DocumentsClient({ documents: initial, departments, categories, i
             className="pl-9"
           />
         </div>
-        <Select value={filterDept} onValueChange={(v) => setFilterDept(v ?? "all")}>
-          <SelectTrigger className="w-52">
-            <SelectValue placeholder="Departamento" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los departamentos</SelectItem>
-            {departments.map((d) => (
-              <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={filterCat} onValueChange={(v) => setFilterCat(v ?? "all")}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Categoria" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas las categorias</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
 
-      {/* Leyenda de permisos */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        <span className="text-xs text-slate-400 mr-1 self-center">Tu acceso:</span>
-        {Object.entries(levelConfig).map(([level, cfg]) => (
-          <span key={level} className={`text-xs px-2 py-0.5 rounded-full ${cfg.className}`}>
-            {cfg.label}
-          </span>
-        ))}
+        {/* Grid de documentos */}
+        {filtered.length === 0 ? (
+          <div className="text-center py-20">
+            <FolderOpen className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-400 text-sm">
+              {search ? "Sin resultados para tu busqueda" : "Sin documentos en este departamento"}
+            </p>
+            {isAdmin && !search && (
+              <Button variant="outline" size="sm" className="mt-4" onClick={() => setShowUpload(true)}>
+                Subir el primero
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {filtered.map((doc) => (
+              <DocumentCard
+                key={doc.id}
+                document={doc}
+                isAdmin={isAdmin}
+                onNewVersion={() => handleNewVersion(doc.id)}
+              />
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Documents grouped by dept */}
-      {Object.keys(byDept).length === 0 ? (
-        <div className="text-center py-20">
-          <FolderOpen className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-400 text-sm">
-            {search ? "Sin resultados para tu busqueda" : "Sin documentos disponibles"}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {Object.entries(byDept).sort().map(([dept, docs]) => (
-            <div key={dept}>
-              <div className="flex items-center gap-2 mb-3">
-                <Building2 className="w-4 h-4 text-slate-400" />
-                <h2 className="text-sm font-semibold text-slate-700">{dept}</h2>
-                <span className="text-xs text-slate-400">{docs.length} docs</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {docs.map((doc) => (
-                  <DocumentCard
-                    key={doc.id}
-                    document={doc}
-                    isAdmin={isAdmin}
-                    onNewVersion={() => handleNewVersion(doc.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {showUpload && (
         <UploadModal
