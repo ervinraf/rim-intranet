@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard, Users, Clock, FolderOpen,
   Wrench, HardHat, LogOut, GanttChartSquare, Settings, Receipt,
-  CalendarDays, ClipboardList, UserCheck, Palmtree, Star,
+  CalendarDays, ClipboardList, UserCheck, Palmtree, Star, UserPlus,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -52,6 +52,7 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
       {
         title: "Recursos Humanos",
         items: [
+          { label: "Nuevo Ingreso", href: "/dashboard/nuevo-ingreso", icon: UserPlus },
           { label: "Vacaciones", href: "/dashboard/vacaciones", icon: Palmtree },
           { label: "Banco de Horas", href: "/dashboard/horas", icon: Clock },
           { label: "DC3 y EPP", href: "/dashboard/dc3", icon: HardHat },
@@ -77,6 +78,7 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
       {
         title: "Recursos Humanos",
         items: [
+          { label: "Nuevo Ingreso", href: "/dashboard/nuevo-ingreso", icon: UserPlus },
           { label: "Asistencia", href: "/dashboard/asistencia", icon: UserCheck },
           { label: "Vacaciones", href: "/dashboard/vacaciones", icon: Palmtree },
           { label: "Banco de Horas", href: "/dashboard/horas", icon: Clock },
@@ -132,6 +134,7 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
         {
           title: "RH",
           items: [
+            { label: "Nuevo Ingreso", href: "/dashboard/nuevo-ingreso", icon: UserPlus },
             { label: "Asistencia", href: "/dashboard/asistencia", icon: UserCheck },
             { label: "Vacaciones", href: "/dashboard/vacaciones", icon: Palmtree },
             { label: "Banco de Horas", href: "/dashboard/horas", icon: Clock },

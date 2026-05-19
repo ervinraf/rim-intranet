@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard, Users, Clock, FolderOpen,
   Wrench, HardHat, LogOut, GanttChartSquare, Settings,
-  Menu, X, Receipt, CalendarDays, ClipboardList, UserCheck,
+  Menu, X, Receipt, CalendarDays, ClipboardList, UserCheck, UserPlus, Palmtree, Star,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -65,6 +65,8 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
       {
         title: "Recursos Humanos",
         items: [
+          { label: "Nuevo Ingreso", href: "/dashboard/nuevo-ingreso", icon: UserPlus },
+          { label: "Vacaciones", href: "/dashboard/vacaciones", icon: Palmtree },
           { label: "Banco de Horas", href: "/dashboard/horas", icon: Clock },
           { label: "DC3 y EPP", href: "/dashboard/dc3", icon: HardHat },
         ],
@@ -88,6 +90,9 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
       {
         title: "Recursos Humanos",
         items: [
+          { label: "Nuevo Ingreso", href: "/dashboard/nuevo-ingreso", icon: UserPlus },
+          { label: "Asistencia", href: "/dashboard/asistencia", icon: UserCheck },
+          { label: "Vacaciones", href: "/dashboard/vacaciones", icon: Palmtree },
           { label: "Banco de Horas", href: "/dashboard/horas", icon: Clock },
           { label: "DC3 y EPP", href: "/dashboard/dc3", icon: HardHat },
         ],
@@ -123,7 +128,7 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
 
   switch (dept) {
     case "Recursos Humanos":
-      return [base, { title: "RH", items: [{ label: "Banco de Horas", href: "/dashboard/horas", icon: Clock }, { label: "DC3 y EPP", href: "/dashboard/dc3", icon: HardHat }] }, docs]
+      return [base, { title: "RH", items: [{ label: "Nuevo Ingreso", href: "/dashboard/nuevo-ingreso", icon: UserPlus }, { label: "Asistencia", href: "/dashboard/asistencia", icon: UserCheck }, { label: "Vacaciones", href: "/dashboard/vacaciones", icon: Palmtree }, { label: "Banco de Horas", href: "/dashboard/horas", icon: Clock }, { label: "DC3 y EPP", href: "/dashboard/dc3", icon: HardHat }] }, docs]
     case "Administracion":
       return [base, { title: "Administracion", items: [{ label: "Banco de Horas", href: "/dashboard/horas", icon: Clock }, valesSection] }, docs]
     case "Ventas":

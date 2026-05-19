@@ -110,6 +110,7 @@ model Employee {
   attendance         Attendance[]
   vacationRequests   VacationRequest[]
   vacationsApproved  VacationRequest[]    @relation("VacationApprover")
+  onboarding         Onboarding?
 
   @@index([departmentId], map: "Employee_departmentId_fkey")
   @@index([roleId], map: "Employee_roleId_fkey")
@@ -856,4 +857,32 @@ model ClientSurvey {
   project Project @relation(fields: [projectId], references: [id])
 
   @@index([projectId], map: "ClientSurvey_projectId_fkey")
+}
+
+model Onboarding {
+  id          String           @id @default(cuid())
+  employeeId  String           @unique
+  startDate   DateTime
+  completedAt DateTime?
+  notes       String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  employee    Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  items       OnboardingItem[]
+
+  @@index([employeeId], map: "Onboarding_employeeId_fkey")
+}
+
+model OnboardingItem {
+  id           String     @id @default(cuid())
+  onboardingId String
+  category     String
+  label        String
+  done         Boolean    @default(false)
+  doneAt       DateTime?
+  notes        String?
+  createdAt    DateTime   @default(now())
+  onboarding   Onboarding @relation(fields: [onboardingId], references: [id], onDelete: Cascade)
+
+  @@index([onboardingId], map: "OnboardingItem_onboardingId_fkey")
 }
