@@ -8,14 +8,14 @@ export default async function HorasPage() {
   if (!session?.user) redirect("/login")
 
   const isAdmin = ["SUPERADMIN", "ADMIN", "GERENTE"].includes(session.user.role ?? "")
-  const isOperativo = session.user.employeeType === "OPERATIVO"
+  const hasEmployee = !!session.user.employeeId
 
-  if (!isAdmin && !isOperativo) {
+  if (!isAdmin && !hasEmployee) {
     return (
       <div className="p-8">
         <h1 className="text-xl font-semibold text-slate-900">Banco de horas extras</h1>
         <p className="text-slate-500 mt-2">
-          Este modulo aplica solo al personal operativo.
+          Tu usuario no tiene un perfil de empleado asociado.
         </p>
       </div>
     )
@@ -25,7 +25,7 @@ export default async function HorasPage() {
   let sdi = 0
   let employeeWorkdayHours = 8
 
-  if (isOperativo && session.user.employeeId) {
+  if (session.user.employeeId) {
     const emp = await prisma.employee.findUnique({
       where: { id: session.user.employeeId },
       select: { salarioBase: true, sdi: true, workdayHours: true },
@@ -46,7 +46,7 @@ export default async function HorasPage() {
   return (
     <HorasClient
       isAdmin={isAdmin}
-      isOperativo={isOperativo}
+      isOperativo={session.user.employeeType === "OPERATIVO"}
       salarioBase={salarioBase}
       sdi={sdi}
       employeeId={session.user.employeeId ?? ""}
