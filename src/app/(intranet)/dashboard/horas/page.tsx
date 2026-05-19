@@ -10,7 +10,6 @@ export default async function HorasPage() {
   const isAdmin = ["SUPERADMIN", "ADMIN", "GERENTE"].includes(session.user.role ?? "")
   const isOperativo = session.user.employeeType === "OPERATIVO"
 
-  // Supervisores y administrativos no tienen acceso al banco de horas
   if (!isAdmin && !isOperativo) {
     return (
       <div className="p-8">
@@ -34,6 +33,14 @@ export default async function HorasPage() {
     sdi = Number(emp?.sdi ?? 0)
   }
 
+  const employees = isAdmin
+    ? await prisma.employee.findMany({
+        where: { isActive: true, employeeType: "OPERATIVO" },
+        select: { id: true, fullName: true, department: { select: { name: true } } },
+        orderBy: { fullName: "asc" },
+      })
+    : []
+
   return (
     <HorasClient
       isAdmin={isAdmin}
@@ -41,6 +48,7 @@ export default async function HorasPage() {
       salarioBase={salarioBase}
       sdi={sdi}
       employeeId={session.user.employeeId ?? ""}
+      employees={employees}
     />
   )
 }

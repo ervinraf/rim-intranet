@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, CheckCircle, X, Palmtree, Clock, CalendarCheck, CalendarClock, CalendarX } from "lucide-react"
+import { Plus, CheckCircle, X, Palmtree, Clock, CalendarCheck, CalendarClock, Users } from "lucide-react"
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select"
 import { format, differenceInCalendarDays, isAfter, isBefore, startOfYear, endOfYear } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -147,18 +150,37 @@ export function VacacionesClient({ requests: initial, isAdmin, hasEmployee }: Pr
 
   return (
     <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Vacaciones</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             {pendingCount > 0 ? `${pendingCount} solicitud(es) pendiente(s)` : "Sin solicitudes pendientes"}
           </p>
         </div>
-        {hasEmployee && (
-          <Button size="sm" onClick={() => setShowForm((v) => !v)}>
-            <Plus className="w-4 h-4 mr-1.5" />Solicitar vacaciones
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Selector de empleado (solo admin) */}
+          {isAdmin && byEmployee.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-slate-400 flex-shrink-0" />
+              <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Todos los empleados" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los empleados</SelectItem>
+                  {byEmployee.map(([, e]) => (
+                    <SelectItem key={e.name} value={e.name}>{e.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {hasEmployee && (
+            <Button size="sm" onClick={() => setShowForm((v) => !v)}>
+              <Plus className="w-4 h-4 mr-1.5" />Solicitar vacaciones
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Stat cards */}

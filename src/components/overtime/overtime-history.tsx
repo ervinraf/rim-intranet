@@ -30,16 +30,20 @@ const statusLabels: Record<string, { label: string; variant: "default" | "second
   RECHAZADO: { label: "Rechazado", variant: "destructive" },
 }
 
-export function OvertimeHistory({ isAdmin }: { isAdmin: boolean }) {
+export function OvertimeHistory({ isAdmin, filterEmployeeId }: { isAdmin: boolean; filterEmployeeId?: string }) {
   const [records, setRecords] = useState<OvertimeRecord[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/overtime")
+    setLoading(true)
+    const url = filterEmployeeId
+      ? `/api/overtime?employeeId=${filterEmployeeId}`
+      : "/api/overtime"
+    fetch(url)
       .then((r) => r.json())
       .then(setRecords)
       .finally(() => setLoading(false))
-  }, [])
+  }, [filterEmployeeId])
 
   function exportCsv() {
     const header = ["Empleado", "Departamento", "Semana inicio", "Semana fin", "Hrs trabajadas", "Hrs dobles", "Hrs triples", "Hrs banco", "Estado"]
