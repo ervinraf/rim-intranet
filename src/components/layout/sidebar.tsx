@@ -52,6 +52,7 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
       {
         title: "Recursos Humanos",
         items: [
+          { label: "Vacaciones", href: "/dashboard/vacaciones", icon: Palmtree },
           { label: "Banco de Horas", href: "/dashboard/horas", icon: Clock },
           { label: "DC3 y EPP", href: "/dashboard/dc3", icon: HardHat },
         ],
