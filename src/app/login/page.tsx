@@ -105,6 +105,9 @@ export default function LoginPage() {
         <p className="text-center text-xs text-slate-400 mt-6">
           Acceso restringido a personal autorizado de RIM Rigging
         </p>
+        <p className="text-center text-xs text-slate-300 mt-2">
+          &copy; {new Date().getFullYear()} PC Support DEV SLP
+        </p>
       </div>
     </div>
   )
