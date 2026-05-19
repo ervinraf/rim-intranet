@@ -36,13 +36,12 @@ export default async function HerramientasPage() {
         orderBy: [{ status: "asc" }, { name: "asc" }],
       }),
       prisma.purchaseRequisition.findMany({
-        where: { status: { in: ["PENDIENTE", "APROBADO"] } },
         include: {
           department: { select: { name: true } },
           project: { select: { name: true } },
         },
         orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
-        take: 50,
+        take: 200,
       }),
       prisma.repairRequest.findMany({
         where: { status: { not: "SURTIDO" } },

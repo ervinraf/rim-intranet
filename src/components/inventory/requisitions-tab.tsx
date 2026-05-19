@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Plus, Check, X, ChevronDown, ChevronUp } from "lucide-react"
+import { Plus, Check, X, ChevronDown, ChevronUp, Printer, History } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -33,15 +33,57 @@ interface Props {
 
 export function RequisitionsTab({ requisitions, departments, projects, isAdmin, search, onUpdate }: Props) {
   const [showForm, setShowForm] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [form, setForm] = useState({ title: "", description: "", priority: "NORMAL", departmentId: "", projectId: "" })
   const [items, setItems] = useState<ReqItem[]>([{ name: "", quantity: 1, unit: "pza" }])
   const [loading, setLoading] = useState(false)
 
   const filtered = useMemo(() =>
-    requisitions.filter((r) =>
-      !search || r.title.toLowerCase().includes(search.toLowerCase())
-    ), [requisitions, search])
+    requisitions.filter((r) => {
+      const matchSearch = !search || r.title.toLowerCase().includes(search.toLowerCase())
+      const matchHistory = showHistory ? true : !["SURTIDO", "RECHAZADO"].includes(r.status)
+      return matchSearch && matchHistory
+    }), [requisitions, search, showHistory])
+
+  function printReq(req: any) {
+    const items: ReqItem[] = Array.isArray(req.items) ? req.items : []
+    const win = window.open("", "_blank")
+    if (!win) return
+    win.document.write(`
+      <html><head><title>Requisicion - ${req.title}</title>
+      <style>
+        body { font-family: Calibri, sans-serif; padding: 32px; color: #1e293b; }
+        h1 { font-size: 20px; margin-bottom: 4px; }
+        .meta { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+        .urgente { background: #fef2f2; border: 1px solid #fca5a5; color: #b91c1c; padding: 6px 12px; border-radius: 6px; font-weight: bold; margin-bottom: 16px; display: inline-block; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        th { background: #f1f5f9; padding: 8px 12px; text-align: left; font-size: 13px; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 12px; color: #94a3b8; }
+        .status { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; background: #f1f5f9; }
+        @media print { button { display: none; } }
+      </style></head>
+      <body>
+        <h1>Requisicion de compra</h1>
+        <div class="meta">
+          ${req.department?.name ? `${req.department.name} &nbsp;·&nbsp; ` : ""}
+          ${format(new Date(req.createdAt), "d 'de' MMMM yyyy", { locale: es })}
+          &nbsp;·&nbsp; <span class="status">${statusConfig[req.status as keyof typeof statusConfig]?.label ?? req.status}</span>
+        </div>
+        ${req.priority === "URGENTE" ? `<div class="urgente">PRIORIDAD URGENTE</div>` : ""}
+        <h2 style="font-size:16px;margin-bottom:4px">${req.title}</h2>
+        ${req.description ? `<p style="color:#475569;font-size:14px">${req.description}</p>` : ""}
+        <table>
+          <thead><tr><th>Articulo</th><th style="text-align:right;width:80px">Cantidad</th><th style="width:80px">Unidad</th></tr></thead>
+          <tbody>${items.map((i) => `<tr><td>${i.name}</td><td style="text-align:right">${i.quantity}</td><td>${i.unit ?? ""}</td></tr>`).join("")}</tbody>
+        </table>
+        <div class="footer">RIM Rigging &nbsp;·&nbsp; Generado el ${format(new Date(), "d/MM/yyyy HH:mm")}</div>
+        <script>window.onload = () => { window.print(); }</script>
+      </body></html>
+    `)
+    win.document.close()
+  }
 
   function addItem() {
     setItems((prev) => [...prev, { name: "", quantity: 1, unit: "pza" }])
@@ -85,7 +127,15 @@ export function RequisitionsTab({ requisitions, departments, projects, isAdmin, 
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-between">
+        <Button
+          size="sm"
+          variant={showHistory ? "default" : "outline"}
+          onClick={() => setShowHistory(!showHistory)}
+        >
+          <History className="w-4 h-4 mr-1.5" />
+          {showHistory ? "Ocultar historial" : "Ver historial"}
+        </Button>
         <Button size="sm" onClick={() => setShowForm(!showForm)}>
           <Plus className="w-4 h-4 mr-1.5" /> Nueva requisicion
         </Button>
@@ -187,6 +237,15 @@ export function RequisitionsTab({ requisitions, departments, projects, isAdmin, 
                       Marcar surtido
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 w-7 p-0 text-slate-400 hover:text-slate-600"
+                    onClick={(e) => { e.stopPropagation(); printReq(req) }}
+                    title="Imprimir"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                  </Button>
                   {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                 </div>
               </div>
