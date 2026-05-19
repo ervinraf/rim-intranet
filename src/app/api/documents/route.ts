@@ -75,6 +75,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  try {
   const session = await auth()
   if (!session?.user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
 
@@ -156,4 +157,9 @@ export async function POST(req: NextRequest) {
   })
 
   return NextResponse.json(document, { status: 201 })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error("Documents POST unhandled:", msg)
+    return NextResponse.json({ error: `Error interno: ${msg}` }, { status: 500 })
+  }
 }
