@@ -81,6 +81,10 @@ export function DocumentsClient({ documents: initial, departments, categories, i
     )
   }
 
+  function handleDelete(docId: string) {
+    setDocuments((prev) => prev.filter((d) => d.id !== docId))
+  }
+
   return (
     <div className="flex h-full min-h-screen">
       {/* Sidebar de departamentos */}
@@ -182,6 +186,7 @@ export function DocumentsClient({ documents: initial, departments, categories, i
                 document={doc}
                 isAdmin={isAdmin}
                 onNewVersion={() => handleNewVersion(doc.id)}
+                onDelete={handleDelete}
               />
             ))}
           </div>

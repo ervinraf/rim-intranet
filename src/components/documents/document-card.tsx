@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
   FileText, FileSpreadsheet, FileImage, File,
-  Download, Eye, Upload, History, Lock,
+  Download, Eye, Upload, History, Lock, Trash2,
 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -62,13 +62,23 @@ interface DocumentCardProps {
   document: Doc
   isAdmin: boolean
   onNewVersion: () => void
+  onDelete?: (id: string) => void
 }
 
-export function DocumentCard({ document: doc, isAdmin, onNewVersion }: DocumentCardProps) {
+export function DocumentCard({ document: doc, isAdmin, onNewVersion, onDelete }: DocumentCardProps) {
   const [uploading, setUploading] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [uploadNote, setUploadNote] = useState("")
   const fileRef = useRef<HTMLInputElement>(null)
+
+  async function handleDelete() {
+    if (!confirm(`Eliminar "${doc.name}"?`)) return
+    setDeleting(true)
+    await fetch(`/api/documents/${doc.id}`, { method: "DELETE" })
+    setDeleting(false)
+    onDelete?.(doc.id)
+  }
   const level = doc.effectiveLevel
   const levelCfg = level ? levelConfig[level] : null
 
@@ -186,6 +196,20 @@ export function DocumentCard({ document: doc, isAdmin, onNewVersion }: DocumentC
                 <Upload className="w-3.5 h-3.5" />
               </Button>
             </>
+          )}
+
+          {/* Eliminar (solo admin) */}
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 w-8 p-0 text-red-400 hover:text-red-600 hover:border-red-300"
+              disabled={deleting}
+              onClick={handleDelete}
+              title="Eliminar documento"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
           )}
         </div>
       </div>
