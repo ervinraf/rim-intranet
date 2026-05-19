@@ -14,7 +14,7 @@ export async function GET() {
   try {
     const { put } = await import("@vercel/blob")
     const testContent = new Blob(["test"], { type: "text/plain" })
-    const result = await put("_test/connection-check.txt", testContent, { access: "public" })
+    const result = await put("_test/connection-check.txt", testContent, { access: "public", allowOverwrite: true })
     return NextResponse.json({ ok: true, hasToken, tokenPreview, url: result.url })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
