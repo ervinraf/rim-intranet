@@ -23,6 +23,7 @@ const updateSchema = z.object({
   roleId: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
   newPassword: z.string().min(6).optional(),
+  workdayHours: z.union([z.literal(8), z.literal(9)]).optional(),
 })
 
 export async function GET(

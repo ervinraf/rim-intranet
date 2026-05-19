@@ -23,20 +23,22 @@ export default async function HorasPage() {
 
   let salarioBase = 0
   let sdi = 0
+  let employeeWorkdayHours = 8
 
   if (isOperativo && session.user.employeeId) {
     const emp = await prisma.employee.findUnique({
       where: { id: session.user.employeeId },
-      select: { salarioBase: true, sdi: true },
+      select: { salarioBase: true, sdi: true, workdayHours: true },
     })
     salarioBase = Number(emp?.salarioBase ?? 0)
     sdi = Number(emp?.sdi ?? 0)
+    employeeWorkdayHours = emp?.workdayHours ?? 8
   }
 
   const employees = isAdmin
     ? await prisma.employee.findMany({
         where: { isActive: true, employeeType: "OPERATIVO" },
-        select: { id: true, fullName: true, department: { select: { name: true } } },
+        select: { id: true, fullName: true, workdayHours: true, department: { select: { name: true } } },
         orderBy: { fullName: "asc" },
       })
     : []
@@ -48,6 +50,7 @@ export default async function HorasPage() {
       salarioBase={salarioBase}
       sdi={sdi}
       employeeId={session.user.employeeId ?? ""}
+      employeeWorkdayHours={employeeWorkdayHours}
       employees={employees}
     />
   )

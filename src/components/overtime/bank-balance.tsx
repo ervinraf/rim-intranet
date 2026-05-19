@@ -29,9 +29,10 @@ interface BankData {
 
 interface BankBalanceProps {
   employeeId?: string
+  hoursPerDay?: 8 | 9
 }
 
-export function BankBalance({ employeeId }: BankBalanceProps) {
+export function BankBalance({ employeeId, hoursPerDay = 8 }: BankBalanceProps) {
   const [data, setData] = useState<BankData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -59,6 +60,11 @@ export function BankBalance({ employeeId }: BankBalanceProps) {
                 {data?.totalBalance.toFixed(1)}{" "}
                 <span className="text-lg font-normal">hrs</span>
               </p>
+              {(data?.totalBalance ?? 0) > 0 && (
+                <p className="text-sm text-amber-600 mt-0.5">
+                  = {((data?.totalBalance ?? 0) / hoursPerDay).toFixed(1)} dias ({hoursPerDay} hrs/dia)
+                </p>
+              )}
             </div>
             <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center">
               <Clock className="w-7 h-7 text-amber-600" />
