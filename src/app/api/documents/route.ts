@@ -128,8 +128,9 @@ export async function POST(req: NextRequest) {
       version: 1,
     },
     include: {
-      department: { select: { name: true } },
-      category: { select: { name: true } },
+      department: { select: { id: true, name: true } },
+      category: { select: { id: true, name: true } },
+      _count: { select: { versions: true } },
     },
   })
 
@@ -156,7 +157,7 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  return NextResponse.json(document, { status: 201 })
+  return NextResponse.json({ ...document, effectiveLevel: "DESCARGAR" }, { status: 201 })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error("Documents POST unhandled:", msg)
