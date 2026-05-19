@@ -1,0 +1,43 @@
+name: Database Backup
+
+on:
+  schedule:
+    # Cada dia a las 3am hora de Mexico (CST = UTC-6 → 9am UTC)
+    - cron: "0 9 * * *"
+  workflow_dispatch: # Permite ejecutar manualmente desde GitHub
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Instalar cliente MySQL
+        run: sudo apt-get install -y mysqldump
+
+      - name: Crear backup
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+        run: |
+          FILENAME="backup_$(date +'%Y-%m-%d_%H-%M').sql"
+          mysqldump \
+            --host="$DB_HOST" \
+            --port="$DB_PORT" \
+            --user="$DB_USER" \
+            --password="$DB_PASS" \
+            --single-transaction \
+            --routines \
+            --triggers \
+            "$DB_NAME" > "$FILENAME"
+          echo "Backup creado: $FILENAME ($(du -sh $FILENAME | cut -f1))"
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+
+      - name: Subir backup como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_number }}-${{ github.run_id }}
+          path: ${{ env.FILENAME }}
+          retention-days: 90
