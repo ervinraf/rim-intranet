@@ -172,12 +172,16 @@
   transform: translateY(-2px);
 }
 
-/* Botones primarios (default) con profundidad */
+/* Todos los botones — texto blanco base */
+button[data-slot="button"] {
+  color: #ffffff;
+  transition: box-shadow 150ms ease, transform 150ms ease, background 150ms ease;
+}
+
+/* Default — oscuro con profundidad */
 button[data-slot="button"][data-variant="default"] {
   background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  color: #ffffff;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 2px 6px rgba(15,23,42,.25);
-  transition: box-shadow 150ms ease, transform 150ms ease;
 }
 button[data-slot="button"][data-variant="default"]:hover {
   box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 4px 12px rgba(15,23,42,.3);
@@ -188,25 +192,50 @@ button[data-slot="button"][data-variant="default"]:active {
   box-shadow: inset 0 2px 4px rgba(15,23,42,.2);
 }
 
-/* Botones outline — fondo blanco, borde gris, texto oscuro */
+/* Outline — slate medio con borde, texto blanco */
 button[data-slot="button"][data-variant="outline"] {
-  background: #ffffff;
-  color: #1e293b;
-  border-color: #cbd5e1;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 1px 3px rgba(15,23,42,.08);
+  background: linear-gradient(180deg, #475569 0%, #334155 100%);
+  border-color: #64748b;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 1px 3px rgba(15,23,42,.15);
 }
 button[data-slot="button"][data-variant="outline"]:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
+  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+  border-color: #475569;
+  transform: translateY(-1px);
 }
 
-/* Botones destructive — rojo suave */
+/* Secondary — slate claro */
+button[data-slot="button"][data-variant="secondary"] {
+  background: linear-gradient(180deg, #64748b 0%, #475569 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 1px 3px rgba(15,23,42,.15);
+}
+button[data-slot="button"][data-variant="secondary"]:hover {
+  background: linear-gradient(180deg, #475569 0%, #334155 100%);
+  transform: translateY(-1px);
+}
+
+/* Destructive — rojo */
 button[data-slot="button"][data-variant="destructive"] {
   background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
-  color: #ffffff;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 2px 6px rgba(220,38,38,.3);
 }
 button[data-slot="button"][data-variant="destructive"]:hover {
   box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 4px 12px rgba(220,38,38,.35);
   transform: translateY(-1px);
+}
+
+/* Ghost — transparente, texto blanco al hover */
+button[data-slot="button"][data-variant="ghost"] {
+  color: inherit;
+  background: transparent;
+}
+button[data-slot="button"][data-variant="ghost"]:hover {
+  background: rgba(15,23,42,.08);
+  color: #1e293b;
+}
+
+/* Link variant */
+button[data-slot="button"][data-variant="link"] {
+  color: #3b82f6;
+  background: transparent;
 }
