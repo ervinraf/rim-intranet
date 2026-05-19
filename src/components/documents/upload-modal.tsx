@@ -48,8 +48,12 @@ export function UploadModal({ departments, categories, userDeptId, onClose, onSu
     setLoading(false)
 
     if (!res.ok) {
-      const data = await res.json()
-      setError(data.error ?? "Error al subir")
+      try {
+        const data = await res.json()
+        setError(data.error ?? `Error al subir (${res.status})`)
+      } catch {
+        setError(`Error al subir (${res.status}). Verifica que el almacenamiento este configurado.`)
+      }
       return
     }
 
