@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { prisma } from "@/lib/prisma"
 
 const KEYS = ["company_name", "company_logo", "company_history", "company_vision", "company_mission", "company_services"]
