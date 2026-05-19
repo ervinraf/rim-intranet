@@ -128,3 +128,61 @@
     @apply font-sans;
   }
 }
+
+/* ── 3D Dimensional Design System ───────────────────────── */
+:root {
+  --elev-1: 0 1px 2px rgba(15,23,42,.04), 0 2px 6px rgba(15,23,42,.05);
+  --elev-2: 0 1px 2px rgba(15,23,42,.04), 0 4px 12px rgba(15,23,42,.07), 0 12px 24px rgba(15,23,42,.05);
+  --elev-3: 0 1px 2px rgba(15,23,42,.04), 0 8px 20px rgba(15,23,42,.09), 0 24px 40px rgba(15,23,42,.07);
+  --elev-4: 0 2px 4px rgba(15,23,42,.05), 0 12px 32px rgba(15,23,42,.12), 0 32px 56px rgba(15,23,42,.09);
+  --highlight-top: inset 0 1px 0 rgba(255,255,255,.9);
+  --highlight-inner: inset 0 1px 0 rgba(255,255,255,.8), inset 0 -1px 0 rgba(15,23,42,.04);
+}
+
+/* Fondo del dashboard — degradado suave con textura */
+.dashboard-bg {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 0%, rgba(251,191,36,.05) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 100%, rgba(100,116,139,.06) 0%, transparent 60%),
+    linear-gradient(160deg, #f1f5f9 0%, #e8edf5 50%, #eef2f8 100%);
+  min-height: 100vh;
+}
+
+/* Cards elevadas */
+.card-3d {
+  background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+  box-shadow: var(--highlight-top), var(--elev-2);
+  border-color: rgba(203,213,225,.7) !important;
+  transition: box-shadow 180ms ease, transform 180ms ease;
+}
+.card-3d:hover {
+  box-shadow: var(--highlight-top), var(--elev-3);
+  transform: translateY(-1px);
+}
+
+/* Stat cards — elevación máxima */
+.stat-card-3d {
+  background: linear-gradient(160deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: var(--highlight-inner), var(--elev-3);
+  border-color: rgba(203,213,225,.5) !important;
+  transition: box-shadow 200ms ease, transform 200ms ease;
+}
+.stat-card-3d:hover {
+  box-shadow: var(--highlight-inner), var(--elev-4);
+  transform: translateY(-2px);
+}
+
+/* Botones primarios con profundidad */
+button[data-slot="button"]:not([data-variant="ghost"]):not([data-variant="outline"]):not([data-variant="secondary"]):not([data-variant="destructive"]) {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 2px 6px rgba(15,23,42,.25);
+  transition: box-shadow 150ms ease, transform 150ms ease;
+}
+button[data-slot="button"]:not([data-variant="ghost"]):not([data-variant="outline"]):not([data-variant="secondary"]):not([data-variant="destructive"]):hover {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.15), 0 4px 12px rgba(15,23,42,.3);
+  transform: translateY(-1px);
+}
+button[data-slot="button"]:not([data-variant="ghost"]):not([data-variant="outline"]):not([data-variant="secondary"]):not([data-variant="destructive"]):active {
+  transform: translateY(0);
+  box-shadow: inset 0 2px 4px rgba(15,23,42,.2);
+}

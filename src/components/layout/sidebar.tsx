@@ -254,9 +254,18 @@ export function Sidebar({ userRole, userName, department, companyName = "RIM Rig
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href))
 
   return (
-    <aside className="w-64 min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+    <aside
+      className="w-64 min-h-screen text-slate-100 flex flex-col relative"
+      style={{
+        background: "linear-gradient(180deg, #0a1628 0%, #0f172a 40%, #111827 100%)",
+        boxShadow: "4px 0 32px rgba(0,0,0,.35), 1px 0 0 rgba(255,255,255,.04) inset",
+      }}
+    >
       {/* Logo */}
-      <div className="px-6 py-5 border-b border-slate-800">
+      <div
+        className="px-6 py-5"
+        style={{ borderBottom: "1px solid rgba(255,255,255,.07)" }}
+      >
         <div className="flex items-center gap-3">
           <LogoMark companyLogo={companyLogo} companyName={companyName} />
           <div className="min-w-0">
@@ -272,46 +281,64 @@ export function Sidebar({ userRole, userName, department, companyName = "RIM Rig
       <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-5">
         {sections.map((section) => (
           <div key={section.title}>
-            <p className="px-3 text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">
+            <p className="px-3 text-xs font-medium uppercase tracking-wider mb-1" style={{ color: "rgba(148,163,184,.5)" }}>
               {section.title}
             </p>
             <ul className="space-y-0.5">
-              {section.items.map((item) => (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
-                      isActive(item.href)
-                        ? "bg-slate-700 text-white"
-                        : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
-                    )}
-                  >
-                    <item.icon className="w-4 h-4 flex-shrink-0" />
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
+              {section.items.map((item) => {
+                const active = isActive(item.href)
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-150",
+                        active
+                          ? "text-amber-300"
+                          : "text-slate-400 hover:text-slate-100"
+                      )}
+                      style={active ? {
+                        background: "linear-gradient(135deg, rgba(251,191,36,.15) 0%, rgba(245,158,11,.08) 100%)",
+                        boxShadow: "inset 0 0 0 1px rgba(251,191,36,.2), 0 2px 8px rgba(251,191,36,.08)",
+                      } : {}}
+                    >
+                      <item.icon
+                        className="w-4 h-4 flex-shrink-0"
+                        style={active ? { filter: "drop-shadow(0 0 4px rgba(251,191,36,.5))" } : {}}
+                      />
+                      {item.label}
+                    </Link>
+                  </li>
+                )
+              })}
             </ul>
           </div>
         ))}
       </nav>
 
       {/* User footer */}
-      <div className="px-3 py-4 border-t border-slate-800">
+      <div className="px-3 py-4" style={{ borderTop: "1px solid rgba(255,255,255,.07)" }}>
         <div className="flex items-center gap-3 px-3 py-2 mb-1">
-          <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-medium text-slate-300 flex-shrink-0">
+          <div
+            className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0"
+            style={{
+              background: "linear-gradient(135deg, #334155 0%, #1e293b 100%)",
+              boxShadow: "0 2px 6px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.1)",
+              color: "#cbd5e1",
+            }}
+          >
             {userName.slice(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-slate-200 truncate">{userName}</p>
-            <p className="text-xs text-slate-500 truncate">{userRole}</p>
+            <p className="text-xs truncate" style={{ color: "rgba(148,163,184,.6)" }}>{userRole}</p>
           </div>
         </div>
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start gap-3 text-slate-400 hover:text-slate-100 hover:bg-slate-800 px-3"
+          className="w-full justify-start gap-3 px-3 text-slate-400 hover:text-slate-100"
+          style={{ transition: "color 150ms" }}
           onClick={() => signOut({ callbackUrl: "/login" })}
         >
           <LogOut className="w-4 h-4" />

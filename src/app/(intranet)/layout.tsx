@@ -54,7 +54,7 @@ export default async function IntranetLayout({
           companyLogo={companyLogo}
         />
 
-        <main className="flex-1 bg-slate-50 overflow-auto">
+        <main className="flex-1 dashboard-bg overflow-auto">
           {children}
         </main>
       </div>
