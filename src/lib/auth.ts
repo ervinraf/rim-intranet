@@ -20,11 +20,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             where: { email: credentials.email as string },
             include: {
               employee: {
-                include: {
-                  role: {
-                    include: { permissions: { include: { permission: true } } },
-                  },
-                },
+                include: { role: true },
               },
             },
           })
@@ -44,10 +40,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             employeeId: user.employee?.id ?? null,
             employeeType: user.employee?.employeeType ?? null,
             role: user.employee?.role?.name ?? null,
-            permissions:
-              user.employee?.role?.permissions.map(
-                (rp) => `${rp.permission.module}:${rp.permission.action}`
-              ) ?? [],
+            permissions: [],
           }
         } catch (err) {
           console.error("[auth] authorize error:", err)
