@@ -162,7 +162,7 @@ export function VacacionesClient({ requests: initial, isAdmin, hasEmployee }: Pr
           {isAdmin && byEmployee.length > 0 && (
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-slate-400 flex-shrink-0" />
-              <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+              <Select value={selectedEmployee} onValueChange={(v) => setSelectedEmployee(v ?? "all")}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Todos los empleados" />
                 </SelectTrigger>

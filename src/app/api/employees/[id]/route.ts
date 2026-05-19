@@ -24,6 +24,9 @@ const updateSchema = z.object({
   isActive: z.boolean().optional(),
   newPassword: z.string().min(6).optional(),
   workdayHours: z.union([z.literal(8), z.literal(9)]).optional(),
+  licenciaNumero: z.string().optional().nullable(),
+  licenciaVencimiento: z.string().optional().nullable(),
+  licenciaFotoUrl: z.string().optional().nullable(),
 })
 
 export async function GET(

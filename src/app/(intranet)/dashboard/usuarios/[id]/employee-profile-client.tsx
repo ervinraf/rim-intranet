@@ -6,8 +6,8 @@ import { EmployeeForm } from "@/components/employees/employee-form"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Clock, Mail, Phone, Building2, Calendar, Edit2, Power } from "lucide-react"
-import { format } from "date-fns"
+import { Clock, Mail, Phone, Building2, Calendar, Edit2, Power, CreditCard, Upload, AlertTriangle } from "lucide-react"
+import { format, differenceInDays, isPast } from "date-fns"
 import { es } from "date-fns/locale"
 
 const typeLabels = {
@@ -51,6 +51,9 @@ interface Employee {
   isActive: boolean
   departmentId?: string | null
   roleId?: string | null
+  licenciaNumero?: string | null
+  licenciaVencimiento?: string | null
+  licenciaFotoUrl?: string | null
   department?: { id: string; name: string } | null
   role?: { id: string; name: string } | null
   user: { email: string; isActive: boolean; createdAt: string }
@@ -70,6 +73,13 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
   const [employee, setEmployee] = useState(initial)
   const [editing, setEditing] = useState(false)
   const [togglingActive, setTogglingActive] = useState(false)
+  const [licenciaEdit, setLicenciaEdit] = useState(false)
+  const [licForm, setLicForm] = useState({
+    numero: initial.licenciaNumero ?? "",
+    vencimiento: initial.licenciaVencimiento ? initial.licenciaVencimiento.slice(0, 10) : "",
+  })
+  const [licFile, setLicFile] = useState<File | null>(null)
+  const [savingLic, setSavingLic] = useState(false)
 
   const typeCfg = typeLabels[employee.employeeType]
 
@@ -84,6 +94,43 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
       setEmployee((e) => ({ ...e, isActive: !e.isActive }))
     }
     setTogglingActive(false)
+  }
+
+  async function saveLicencia() {
+    setSavingLic(true)
+    let fotoUrl = employee.licenciaFotoUrl ?? null
+
+    if (licFile) {
+      const fd = new FormData()
+      fd.append("file", licFile)
+      fd.append("folder", `licencias/${employee.id}`)
+      const r = await fetch("/api/upload", { method: "POST", body: fd })
+      if (r.ok) {
+        const d = await r.json()
+        fotoUrl = d.url
+      }
+    }
+
+    const res = await fetch(`/api/employees/${employee.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        licenciaNumero: licForm.numero || null,
+        licenciaVencimiento: licForm.vencimiento || null,
+        licenciaFotoUrl: fotoUrl,
+      }),
+    })
+    if (res.ok) {
+      setEmployee((e) => ({
+        ...e,
+        licenciaNumero: licForm.numero || null,
+        licenciaVencimiento: licForm.vencimiento ? new Date(licForm.vencimiento).toISOString() : null,
+        licenciaFotoUrl: fotoUrl,
+      }))
+      setLicenciaEdit(false)
+      setLicFile(null)
+    }
+    setSavingLic(false)
   }
 
   if (editing) {
@@ -268,8 +315,8 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
           </div>
 
           {/* Banco de horas */}
-          {employee.employeeType === "OPERATIVO" && (
-            <div>
+          <div className="space-y-4">
+            {employee.employeeType === "OPERATIVO" && (
               <Card className="border-amber-200 bg-amber-50">
                 <CardContent className="pt-5 text-center">
                   <Clock className="w-8 h-8 text-amber-600 mx-auto mb-2" />
@@ -277,8 +324,110 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
                   <p className="text-xs text-amber-700 mt-0.5">horas en banco</p>
                 </CardContent>
               </Card>
-            </div>
-          )}
+            )}
+
+            {/* Licencia de conducir */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-slate-600 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <CreditCard className="w-4 h-4" />
+                    Licencia de conducir
+                  </span>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setLicenciaEdit((v) => !v)}
+                      className="text-xs text-blue-500 hover:text-blue-700"
+                    >
+                      {licenciaEdit ? "Cancelar" : "Editar"}
+                    </button>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {licenciaEdit ? (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-500">Numero de licencia</label>
+                      <input
+                        className="w-full border border-slate-200 rounded-md px-3 py-1.5 text-sm"
+                        value={licForm.numero}
+                        onChange={(e) => setLicForm((p) => ({ ...p, numero: e.target.value }))}
+                        placeholder="XXXXXXXXXX"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-500">Fecha de vencimiento</label>
+                      <input
+                        type="date"
+                        className="w-full border border-slate-200 rounded-md px-3 py-1.5 text-sm"
+                        value={licForm.vencimiento}
+                        onChange={(e) => setLicForm((p) => ({ ...p, vencimiento: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-500">Foto de licencia</label>
+                      <label className="flex items-center gap-2 cursor-pointer border border-dashed border-slate-200 rounded-md px-3 py-2 hover:border-blue-300 hover:bg-blue-50 transition-colors">
+                        <Upload className="w-4 h-4 text-slate-400" />
+                        <span className="text-xs text-slate-500">
+                          {licFile ? licFile.name : "Seleccionar foto..."}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => setLicFile(e.target.files?.[0] ?? null)}
+                        />
+                      </label>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={saveLicencia}
+                      disabled={savingLic}
+                      className="w-full bg-slate-800 text-white text-sm rounded-md py-1.5 hover:bg-slate-700 disabled:opacity-50"
+                    >
+                      {savingLic ? "Guardando..." : "Guardar"}
+                    </button>
+                  </div>
+                ) : employee.licenciaNumero ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-slate-800">{employee.licenciaNumero}</p>
+                    {employee.licenciaVencimiento && (() => {
+                      const venc = new Date(employee.licenciaVencimiento)
+                      const dias = differenceInDays(venc, new Date())
+                      const expired = isPast(venc)
+                      return (
+                        <div className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full w-fit font-medium ${
+                          expired ? "bg-red-100 text-red-700" :
+                          dias <= 30 ? "bg-amber-100 text-amber-700" :
+                          "bg-green-100 text-green-700"
+                        }`}>
+                          {(expired || dias <= 30) && <AlertTriangle className="w-3 h-3" />}
+                          {expired
+                            ? "Vencida"
+                            : dias <= 30
+                            ? `Vence en ${dias} dias`
+                            : `Vigente hasta ${format(venc, "d MMM yyyy", { locale: es })}`}
+                        </div>
+                      )
+                    })()}
+                    {employee.licenciaFotoUrl && (
+                      <a href={employee.licenciaFotoUrl} target="_blank" rel="noreferrer">
+                        <img
+                          src={employee.licenciaFotoUrl}
+                          alt="Licencia"
+                          className="w-full rounded-lg border border-slate-200 mt-1 object-cover max-h-36"
+                        />
+                      </a>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400">Sin registro</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

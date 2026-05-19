@@ -6,6 +6,7 @@ import { BankBalance } from "@/components/overtime/bank-balance"
 import { ApprovalQueue } from "@/components/overtime/approval-queue"
 import { TimeOffForm } from "@/components/overtime/timeoff-form"
 import { OvertimeHistory } from "@/components/overtime/overtime-history"
+import { AdminBankCredit } from "@/components/overtime/admin-bank-credit"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
@@ -77,7 +78,7 @@ export function HorasClient({
         {isAdmin && localEmployees.length > 0 && (
           <div className="flex items-center gap-2 flex-shrink-0">
             <Users className="w-4 h-4 text-slate-400" />
-            <Select value={selectedEmployeeId} onValueChange={(v) => setSelectedEmployeeId(v === "all" ? "" : v)}>
+            <Select value={selectedEmployeeId} onValueChange={(v) => setSelectedEmployeeId((v ?? "") === "all" ? "" : (v ?? ""))}>
               <SelectTrigger className="w-52">
                 <SelectValue placeholder="Todos los empleados" />
               </SelectTrigger>
@@ -167,6 +168,15 @@ export function HorasClient({
             employeeId={viewEmployeeId}
             hoursPerDay={activeWorkdayHours as 8 | 9}
           />
+
+          {isAdmin && selectedEmployee && (
+            <AdminBankCredit
+              key={`credit-${selectedEmployeeId}`}
+              employeeId={selectedEmployee.id}
+              employeeName={selectedEmployee.fullName}
+              onSuccess={refresh}
+            />
+          )}
 
           {isOperativo && (
             <TimeOffForm onSuccess={refresh} />

@@ -74,7 +74,10 @@ model Employee {
   nombres2          String?
   fullName          String
   employeeType      EmployeeType         @default(OPERATIVO)
-  workdayHours      Int                  @default(8)
+  workdayHours        Int                  @default(8)
+  licenciaNumero      String?
+  licenciaVencimiento DateTime?
+  licenciaFotoUrl     String?
   sdi               Decimal?             @db.Decimal(10, 2)
   salarioBase       Decimal?             @db.Decimal(10, 2)
   salarioMensual    Decimal?             @db.Decimal(10, 2)
