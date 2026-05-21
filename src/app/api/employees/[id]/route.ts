@@ -67,6 +67,30 @@ export async function GET(
   return NextResponse.json(employee)
 }
 
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth()
+  if (!session?.user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+
+  const isAdmin = ["SUPERADMIN", "ADMIN"].includes(session.user.role ?? "")
+  if (!isAdmin) return NextResponse.json({ error: "Sin permiso" }, { status: 403 })
+
+  const { id } = await params
+
+  const employee = await prisma.employee.findUnique({
+    where: { id },
+    select: { id: true, fullName: true, userId: true },
+  })
+  if (!employee) return NextResponse.json({ error: "Empleado no encontrado" }, { status: 404 })
+
+  // Cascade: deleting the User also deletes the Employee (onDelete: Cascade)
+  await prisma.user.delete({ where: { id: employee.userId } })
+
+  return NextResponse.json({ ok: true })
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

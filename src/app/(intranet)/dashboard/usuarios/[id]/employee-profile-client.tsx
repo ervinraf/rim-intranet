@@ -6,7 +6,7 @@ import { EmployeeForm } from "@/components/employees/employee-form"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Clock, Mail, Phone, Building2, Calendar, Edit2, Power, CreditCard, Upload, AlertTriangle } from "lucide-react"
+import { Clock, Mail, Phone, Building2, Calendar, Edit2, Power, CreditCard, Upload, AlertTriangle, Trash2 } from "lucide-react"
 import { differenceInDays, isPast } from "date-fns"
 import { fmtDate, parseDate } from "@/lib/utils"
 
@@ -84,6 +84,8 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoPreview, setPhotoPreview] = useState<string | null>(initial.photoUrl ?? null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const typeCfg = typeLabels[employee.employeeType]
 
@@ -135,6 +137,18 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
       setLicFile(null)
     }
     setSavingLic(false)
+  }
+
+  async function deleteEmployee() {
+    setDeleting(true)
+    const res = await fetch(`/api/employees/${employee.id}`, { method: "DELETE" })
+    if (res.ok) {
+      router.push("/dashboard/usuarios")
+      router.refresh()
+    } else {
+      setDeleting(false)
+      setConfirmDelete(false)
+    }
   }
 
   async function uploadPhoto(file: File) {
@@ -269,6 +283,14 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
               >
                 <Power className="w-4 h-4 mr-1.5" />
                 {employee.isActive ? "Desactivar" : "Activar"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmDelete(true)}
+                className="text-red-600 border-red-200 hover:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4" />
               </Button>
             </div>
           )}
@@ -480,6 +502,35 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
           </div>
         </div>
       </div>
+
+      {/* Confirm delete dialog */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl p-6">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="w-5 h-5 text-red-600" />
+              </div>
+              <h2 className="font-semibold text-slate-900">Eliminar empleado</h2>
+            </div>
+            <p className="text-sm text-slate-600 mb-5">
+              Esto eliminara permanentemente a <strong>{employee.fullName}</strong> y todos sus registros. Esta accion no se puede deshacer.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                onClick={deleteEmployee}
+                disabled={deleting}
+              >
+                {deleting ? "Eliminando..." : "Eliminar"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
