@@ -82,6 +82,8 @@ model Employee {
   sdi               Decimal?             @db.Decimal(10, 2)
   salarioBase       Decimal?             @db.Decimal(10, 2)
   salarioMensual    Decimal?             @db.Decimal(10, 2)
+  curp              String?
+  nss               String?
   extension         String?
   phone             String?
   position          String?
