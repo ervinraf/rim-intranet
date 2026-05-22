@@ -243,11 +243,10 @@ export function AsistenciaClient({
           <Button variant="outline" size="sm" onClick={exportCsv}>
             <Download className="w-4 h-4 mr-1.5" />Exportar
           </Button>
-          {isAdmin && (
-            <Button size="sm" onClick={() => setShowForm((v) => !v)}>
-              <Plus className="w-4 h-4 mr-1.5" />Registrar
-            </Button>
-          )}
+          <Button size="sm" onClick={() => setShowForm((v) => !v)}>
+            <Plus className="w-4 h-4 mr-1.5" />
+            {isAdmin ? "Registrar" : "Mi asistencia"}
+          </Button>
         </div>
       </div>
 
@@ -350,19 +349,21 @@ export function AsistenciaClient({
       )}
 
       {/* Form */}
-      {showForm && isAdmin && (
+      {showForm && (
         <Card>
           <CardContent className="pt-4">
             <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Empleado *</Label>
-                <Select value={form.employeeId} onValueChange={(v) => setForm((p) => ({ ...p, employeeId: v ?? "" }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                  <SelectContent>
-                    {employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.fullName}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
+              {isAdmin && (
+                <div className="space-y-1.5">
+                  <Label>Empleado *</Label>
+                  <Select value={form.employeeId} onValueChange={(v) => setForm((p) => ({ ...p, employeeId: v ?? "" }))}>
+                    <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+                    <SelectContent>
+                      {employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.fullName}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label>Fecha *</Label>
                 <Input type="date" value={form.date} onChange={(e) => setForm((p) => ({ ...p, date: e.target.value }))} required />
@@ -401,7 +402,7 @@ export function AsistenciaClient({
                 </div>
               )}
               <div className="col-span-2 flex gap-2">
-                <Button type="submit" size="sm" disabled={loading || (!form.employeeId && !currentEmployeeId)}>
+                <Button type="submit" size="sm" disabled={loading || (isAdmin && !form.employeeId && !currentEmployeeId) || (!isAdmin && !currentEmployeeId)}>
                   {loading ? "Guardando..." : "Registrar"}
                 </Button>
                 <Button type="button" size="sm" variant="outline" onClick={() => { setShowForm(false); setFormError(null) }}>Cancelar</Button>

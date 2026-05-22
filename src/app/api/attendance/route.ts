@@ -66,13 +66,20 @@ export async function POST(req: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
 
   const isAdmin = ["SUPERADMIN", "ADMIN", "GERENTE"].includes(session.user.role ?? "")
-  if (!isAdmin) return NextResponse.json({ error: "Sin permiso" }, { status: 403 })
 
   const body = await req.json()
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
   const { date, checkIn, checkOut, ...rest } = parsed.data
+
+  // Empleados solo pueden registrar su propia asistencia
+  if (!isAdmin && rest.employeeId !== session.user.employeeId) {
+    return NextResponse.json({ error: "Solo puedes registrar tu propia asistencia" }, { status: 403 })
+  }
+  if (!isAdmin && !session.user.employeeId) {
+    return NextResponse.json({ error: "Tu usuario no tiene perfil de empleado" }, { status: 403 })
+  }
 
   const record = await prisma.attendance.upsert({
     where: {
