@@ -95,6 +95,8 @@ export function AsistenciaClient({
     checkIn: "", checkOut: "", type: "NORMAL" as AttendanceType, notes: "",
   })
   const [loading, setLoading] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [formSuccess, setFormSuccess] = useState(false)
 
   // Date range based on view mode
   const { rangeStart, rangeEnd, periodLabel } = useMemo(() => {
@@ -167,27 +169,40 @@ export function AsistenciaClient({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    const res = await fetch("/api/attendance", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        employeeId: form.employeeId || currentEmployeeId,
-        date: form.date,
-        checkIn: form.checkIn || null,
-        checkOut: form.checkOut || null,
-        type: form.type,
-        notes: form.notes || null,
-      }),
-    })
-    if (res.ok) {
-      const rec = await res.json()
-      setRecords((p) => {
-        const exists = p.findIndex((r) => r.id === rec.id)
-        if (exists >= 0) { const n = [...p]; n[exists] = rec; return n }
-        return [rec, ...p]
+    setFormError(null)
+    setFormSuccess(false)
+    try {
+      const res = await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: form.employeeId || currentEmployeeId,
+          date: form.date,
+          checkIn: form.checkIn || null,
+          checkOut: form.checkOut || null,
+          type: form.type,
+          notes: form.notes || null,
+        }),
       })
-      setShowForm(false)
-      setForm({ employeeId: "", date: new Date().toISOString().slice(0, 10), checkIn: "", checkOut: "", type: "NORMAL", notes: "" })
+      const data = await res.json()
+      if (res.ok) {
+        setRecords((p) => {
+          const exists = p.findIndex((r) => r.id === data.id)
+          if (exists >= 0) { const n = [...p]; n[exists] = data; return n }
+          return [data, ...p]
+        })
+        setFormSuccess(true)
+        setTimeout(() => {
+          setShowForm(false)
+          setFormSuccess(false)
+          setForm({ employeeId: "", date: new Date().toISOString().slice(0, 10), checkIn: "", checkOut: "", type: "NORMAL", notes: "" })
+        }, 1200)
+      } else {
+        const msg = typeof data.error === "string" ? data.error : JSON.stringify(data.error)
+        setFormError(msg || "Error al guardar el registro")
+      }
+    } catch (err: any) {
+      setFormError("Error de conexion: " + err.message)
     }
     setLoading(false)
   }
@@ -375,11 +390,21 @@ export function AsistenciaClient({
                 <Label>Notas</Label>
                 <Input value={form.notes} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} placeholder="Observaciones..." />
               </div>
+              {formError && (
+                <div className="col-span-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {formError}
+                </div>
+              )}
+              {formSuccess && (
+                <div className="col-span-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                  Registro guardado correctamente
+                </div>
+              )}
               <div className="col-span-2 flex gap-2">
                 <Button type="submit" size="sm" disabled={loading || (!form.employeeId && !currentEmployeeId)}>
                   {loading ? "Guardando..." : "Registrar"}
                 </Button>
-                <Button type="button" size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => { setShowForm(false); setFormError(null) }}>Cancelar</Button>
               </div>
             </form>
           </CardContent>
