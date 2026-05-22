@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Camera, Link2, Plus, Send, MapPin, User, Calendar, ChevronDown, ChevronUp,
-  FileDown, Mail, MessageCircle, Star,
+  FileDown, Mail, MessageCircle, Star, Pencil, Trash2, Check, X,
 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -80,6 +80,9 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
   const [newTask, setNewTask] = useState({ name: "", startDate: "", endDate: "", description: "" })
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [activeTaskForPhoto, setActiveTaskForPhoto] = useState<string | null>(null)
+  const [editingTask, setEditingTask] = useState<string | null>(null)
+  const [editTaskForm, setEditTaskForm] = useState({ name: "", startDate: "", endDate: "", description: "" })
+  const [deletingTask, setDeletingTask] = useState<string | null>(null)
 
   const clientPortalUrl = `${window.location.origin}/cliente?token=${project.accessToken}`
   const [emailModal, setEmailModal] = useState(false)
@@ -108,6 +111,38 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
 
   function downloadPDF() {
     window.open(`/api/projects/${project.id}/pdf`, "_blank")
+  }
+
+  function startEditTask(task: Task) {
+    setEditingTask(task.id)
+    setEditTaskForm({
+      name: task.name,
+      startDate: task.startDate.slice(0, 10),
+      endDate: task.endDate.slice(0, 10),
+      description: task.description ?? "",
+    })
+  }
+
+  async function saveEditTask(taskId: string) {
+    const res = await fetch(`/api/projects/${project.id}/tasks/${taskId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(editTaskForm),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...updated } : t)))
+      setEditingTask(null)
+    }
+  }
+
+  async function deleteTask(taskId: string) {
+    setDeletingTask(taskId)
+    const res = await fetch(`/api/projects/${project.id}/tasks/${taskId}`, { method: "DELETE" })
+    if (res.ok) {
+      setTasks((prev) => prev.filter((t) => t.id !== taskId))
+    }
+    setDeletingTask(null)
   }
 
   async function handleProgressChange(taskId: string, progress: number) {
@@ -340,21 +375,82 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
             <h2 className="text-base font-semibold text-slate-800">Fotos por actividad</h2>
             {tasks.map((task) => (
               <Card key={task.id} className="border-slate-200">
-                <button
-                  className="w-full flex items-center justify-between px-4 py-3 text-left"
-                  onClick={() => setExpandedTask(expandedTask === task.id ? null : task.id)}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-800">{task.name}</span>
-                    <Badge variant="secondary" className="text-xs">{task.photos.length} fotos</Badge>
-                    <span className="text-xs text-slate-400">{task.progress}% completado</span>
+                {editingTask === task.id ? (
+                  <div className="px-4 py-3 space-y-2">
+                    <Input
+                      value={editTaskForm.name}
+                      onChange={(e) => setEditTaskForm((p) => ({ ...p, name: e.target.value }))}
+                      placeholder="Nombre de la actividad"
+                      className="text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <Input
+                        type="date"
+                        value={editTaskForm.startDate}
+                        onChange={(e) => setEditTaskForm((p) => ({ ...p, startDate: e.target.value }))}
+                        className="text-sm"
+                      />
+                      <Input
+                        type="date"
+                        value={editTaskForm.endDate}
+                        min={editTaskForm.startDate}
+                        onChange={(e) => setEditTaskForm((p) => ({ ...p, endDate: e.target.value }))}
+                        className="text-sm"
+                      />
+                    </div>
+                    <Input
+                      value={editTaskForm.description}
+                      onChange={(e) => setEditTaskForm((p) => ({ ...p, description: e.target.value }))}
+                      placeholder="Descripcion (opcional)"
+                      className="text-sm"
+                    />
+                    <div className="flex gap-2 pt-1">
+                      <Button size="sm" onClick={() => saveEditTask(task.id)} disabled={!editTaskForm.name}>
+                        <Check className="w-3.5 h-3.5 mr-1" /> Guardar
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingTask(null)}>
+                        <X className="w-3.5 h-3.5 mr-1" /> Cancelar
+                      </Button>
+                    </div>
                   </div>
-                  {expandedTask === task.id ? (
-                    <ChevronUp className="w-4 h-4 text-slate-400" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-slate-400" />
-                  )}
-                </button>
+                ) : (
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <button
+                      className="flex items-center gap-2 text-left flex-1 min-w-0"
+                      onClick={() => setExpandedTask(expandedTask === task.id ? null : task.id)}
+                    >
+                      <span className="text-sm font-medium text-slate-800 truncate">{task.name}</span>
+                      <Badge variant="secondary" className="text-xs flex-shrink-0">{task.photos.length} fotos</Badge>
+                      <span className="text-xs text-slate-400 flex-shrink-0">{task.progress}%</span>
+                    </button>
+                    <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                      {isAdmin && (
+                        <>
+                          <button
+                            className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+                            onClick={() => startEditTask(task)}
+                            title="Editar actividad"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            className="p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-600"
+                            onClick={() => deleteTask(task.id)}
+                            disabled={deletingTask === task.id}
+                            title="Eliminar actividad"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
+                      {expandedTask === task.id ? (
+                        <ChevronUp className="w-4 h-4 text-slate-400" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-slate-400" />
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {expandedTask === task.id && (
                   <CardContent className="pt-0 pb-4 px-4">
