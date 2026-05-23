@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select"
 import {
   GraduationCap, Shield, Plus, Search, Download,
-  AlertTriangle, CheckCircle, Clock, X,
+  AlertTriangle, CheckCircle, Clock, X, Pencil, Trash2,
 } from "lucide-react"
 import { format, differenceInDays } from "date-fns"
 import { es } from "date-fns/locale"
@@ -54,6 +54,8 @@ export function DC3Client({ dc3: initialDC3, epp: initialEPP, eppCatalog, employ
     employeeId: "", itemId: "", brand: "", size: "", quantity: "1", notes: "",
   })
   const [loading, setLoading] = useState(false)
+  const [editingDC3, setEditingDC3] = useState<any | null>(null)
+  const [editForm, setEditForm] = useState({ courseName: "", institution: "", instructor: "", hours: "", completedAt: "", expiresAt: "", notes: "" })
 
   // Stats
   const vencidos = dc3.filter((r) => r.expiryStatus === "VENCIDO").length
@@ -129,6 +131,51 @@ export function DC3Client({ dc3: initialDC3, epp: initialEPP, eppCatalog, employ
       setEPPForm({ employeeId: "", itemId: "", brand: "", size: "", quantity: "1", notes: "" })
     }
     setLoading(false)
+  }
+
+  function startEditDC3(r: any) {
+    setEditingDC3(r)
+    setEditForm({
+      courseName: r.courseName,
+      institution: r.institution ?? "",
+      instructor: r.instructor ?? "",
+      hours: r.hours ? String(r.hours) : "",
+      completedAt: r.completedAt ? r.completedAt.slice(0, 10) : "",
+      expiresAt: r.expiresAt ? r.expiresAt.slice(0, 10) : "",
+      notes: r.notes ?? "",
+    })
+  }
+
+  async function saveEditDC3(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingDC3) return
+    setLoading(true)
+    const res = await fetch(`/api/dc3/${editingDC3.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...editForm,
+        hours: editForm.hours ? parseInt(editForm.hours) : undefined,
+        expiresAt: editForm.expiresAt || null,
+      }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      const now = new Date()
+      const threshold = new Date(); threshold.setDate(threshold.getDate() + 60)
+      const expiryStatus = !updated.expiresAt ? "NO_VENCE"
+        : new Date(updated.expiresAt) < now ? "VENCIDO"
+        : new Date(updated.expiresAt) <= threshold ? "POR_VENCER"
+        : "VIGENTE"
+      setDC3((prev) => prev.map((r) => r.id === updated.id ? { ...r, ...updated, expiryStatus } : r))
+      setEditingDC3(null)
+    }
+    setLoading(false)
+  }
+
+  async function deleteDC3(id: string) {
+    await fetch(`/api/dc3/${id}`, { method: "DELETE" })
+    setDC3((prev) => prev.filter((r) => r.id !== id))
   }
 
   async function deleteEPP(id: string) {
@@ -394,13 +441,31 @@ export function DC3Client({ dc3: initialDC3, epp: initialEPP, eppCatalog, employ
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {r.certificateUrl && (
-                          <a href={r.certificateUrl} target="_blank" rel="noopener noreferrer">
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Ver constancia">
-                              <Download className="w-3.5 h-3.5" />
-                            </Button>
-                          </a>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {r.certificateUrl && (
+                            <a href={r.certificateUrl} target="_blank" rel="noopener noreferrer">
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Ver constancia">
+                                <Download className="w-3.5 h-3.5" />
+                              </Button>
+                            </a>
+                          )}
+                          {isAdmin && (
+                            <>
+                              <Button
+                                variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-slate-700"
+                                onClick={() => startEditDC3(r)} title="Editar"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-red-600"
+                                onClick={() => deleteDC3(r.id)} title="Eliminar"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -512,6 +577,48 @@ export function DC3Client({ dc3: initialDC3, epp: initialEPP, eppCatalog, employ
             </div>
           )}
         </>
+      )}
+      {/* Edit DC3 modal */}
+      {editingDC3 && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h2 className="font-semibold text-slate-900">Editar DC3</h2>
+              <button onClick={() => setEditingDC3(null)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={saveEditDC3} className="px-6 py-5 grid grid-cols-2 gap-3">
+              <div className="col-span-2 space-y-1.5">
+                <Label>Curso / Capacitacion *</Label>
+                <Input value={editForm.courseName} onChange={(e) => setEditForm((p) => ({ ...p, courseName: e.target.value }))} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Institucion / Capacitador</Label>
+                <Input value={editForm.institution} onChange={(e) => setEditForm((p) => ({ ...p, institution: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Horas</Label>
+                <Input type="number" min="1" value={editForm.hours} onChange={(e) => setEditForm((p) => ({ ...p, hours: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fecha de termino *</Label>
+                <Input type="date" value={editForm.completedAt} onChange={(e) => setEditForm((p) => ({ ...p, completedAt: e.target.value }))} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fecha de vencimiento</Label>
+                <Input type="date" value={editForm.expiresAt} onChange={(e) => setEditForm((p) => ({ ...p, expiresAt: e.target.value }))} />
+                <p className="text-xs text-slate-400">Dejar vacio si no vence</p>
+              </div>
+              <div className="col-span-2 flex gap-2 pt-1">
+                <Button type="submit" size="sm" disabled={!editForm.courseName || !editForm.completedAt || loading}>
+                  {loading ? "Guardando..." : "Guardar cambios"}
+                </Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => setEditingDC3(null)}>Cancelar</Button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   )
