@@ -45,26 +45,14 @@ export async function PATCH(
   if (!session?.user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
 
   const { id: projectId } = await params
-  const body = await req.json()
-  // Batch update de progreso para multiples tareas a la vez
-  const { tasks } = body as { tasks: { id: string; progress: number }[] }
 
-  await prisma.$transaction(
-    tasks.map((t) =>
-      prisma.projectTask.update({
-        where: { id: t.id, projectId },
-        data: { progress: t.progress },
-      })
-    )
-  )
-
-  // Recalcula progreso general del proyecto
+  // Recalcula progreso del proyecto: promedio de progress de cada tarea (0/50/100 segun fechas reales)
   const allTasks = await prisma.projectTask.findMany({ where: { projectId } })
-  const avg = allTasks.length
+  const projectProgress = allTasks.length
     ? Math.round(allTasks.reduce((s, t) => s + t.progress, 0) / allTasks.length)
     : 0
 
-  await prisma.project.update({ where: { id: projectId }, data: { progress: avg } })
+  await prisma.project.update({ where: { id: projectId }, data: { progress: projectProgress } })
 
-  return NextResponse.json({ ok: true, projectProgress: avg })
+  return NextResponse.json({ ok: true, projectProgress })
 }

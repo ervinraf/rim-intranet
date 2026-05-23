@@ -272,6 +272,9 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
     if (res.ok) {
       const updated = await res.json()
       setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...updated } : t)))
+      if (updated.projectProgress !== undefined) {
+        setProject((p) => ({ ...p, progress: updated.projectProgress }))
+      }
       setEditingActual(null)
     }
   }
@@ -365,13 +368,6 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
               <Star className="w-4 h-4 mr-1.5" />
               Encuesta cliente
             </Button>
-            <Button variant="outline" size="sm" onClick={resetAllProgress} disabled={saving} className="text-slate-600">
-              <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-              Limpiar avances
-            </Button>
-            <Button size="sm" onClick={saveProgress} disabled={saving}>
-              {saving ? "Guardando..." : "Guardar avances"}
-            </Button>
           </div>
         )}
       </div>
@@ -456,8 +452,7 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
               tasks={tasks}
               projectStart={project.startDate}
               projectEnd={project.endDate}
-              onProgressChange={isAdmin ? handleProgressChange : undefined}
-              readOnly={!isAdmin}
+              readOnly={true}
             />
           )}
 
@@ -512,7 +507,13 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
                     >
                       <span className="text-sm font-medium text-slate-800 truncate">{task.name}</span>
                       <Badge variant="secondary" className="text-xs flex-shrink-0">{task.photos.length} fotos</Badge>
-                      <span className="text-xs text-slate-400 flex-shrink-0">{task.progress}%</span>
+                      {task.actualEndDate ? (
+                        <span className="text-xs font-medium text-emerald-600 flex-shrink-0">Completada</span>
+                      ) : task.actualStartDate ? (
+                        <span className="text-xs font-medium text-amber-600 flex-shrink-0">En progreso</span>
+                      ) : (
+                        <span className="text-xs text-slate-400 flex-shrink-0">Pendiente</span>
+                      )}
                     </button>
                     <div className="flex items-center gap-1 ml-2 flex-shrink-0">
                       {isAdmin && (

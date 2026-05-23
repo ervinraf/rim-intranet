@@ -25,7 +25,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const parsed = patchSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const { startDate, endDate, actualStartDate, actualEndDate, ...rest } = parsed.data
+  const { startDate, endDate, actualStartDate, actualEndDate, progress: _ignore, ...rest } = parsed.data
+
+  // Determina el estado de la tarea segun fechas reales
+  const resolvedActualEnd = actualEndDate !== undefined ? (actualEndDate ? new Date(actualEndDate) : null) : undefined
+  const resolvedActualStart = actualStartDate !== undefined ? (actualStartDate ? new Date(actualStartDate) : null) : undefined
+
+  const hasActualEnd = resolvedActualEnd !== undefined ? resolvedActualEnd !== null : undefined
+  const hasActualStart = resolvedActualStart !== undefined ? resolvedActualStart !== null : undefined
+
+  let autoProgress: number | undefined
+  if (hasActualEnd === true) autoProgress = 100
+  else if (hasActualEnd === false && hasActualStart === false) autoProgress = 0
+  else if (hasActualStart === true && hasActualEnd === false) autoProgress = 50
 
   const task = await prisma.projectTask.update({
     where: { id: taskId, projectId },
@@ -33,12 +45,21 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...rest,
       ...(startDate ? { startDate: new Date(startDate) } : {}),
       ...(endDate ? { endDate: new Date(endDate) } : {}),
-      ...(actualStartDate !== undefined ? { actualStartDate: actualStartDate ? new Date(actualStartDate) : null } : {}),
-      ...(actualEndDate !== undefined ? { actualEndDate: actualEndDate ? new Date(actualEndDate) : null } : {}),
+      ...(resolvedActualStart !== undefined ? { actualStartDate: resolvedActualStart } : {}),
+      ...(resolvedActualEnd !== undefined ? { actualEndDate: resolvedActualEnd } : {}),
+      ...(autoProgress !== undefined ? { progress: autoProgress } : {}),
     },
   })
 
-  return NextResponse.json(task)
+  // Recalcula progreso del proyecto: tareas completadas / total
+  const allTasks = await prisma.projectTask.findMany({ where: { projectId } })
+  const completed = allTasks.filter((t) => t.actualEndDate !== null).length
+  const projectProgress = allTasks.length
+    ? Math.round((completed / allTasks.length) * 100)
+    : 0
+  await prisma.project.update({ where: { id: projectId }, data: { progress: projectProgress } })
+
+  return NextResponse.json({ ...task, projectProgress })
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
@@ -52,12 +73,12 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
 
   await prisma.projectTask.delete({ where: { id: taskId, projectId } })
 
-  // Recalcula progreso del proyecto
+  // Recalcula progreso del proyecto: promedio de progress individuales (0/50/100)
   const remaining = await prisma.projectTask.findMany({ where: { projectId } })
-  const avg = remaining.length
+  const progressAfterDelete = remaining.length
     ? Math.round(remaining.reduce((s, t) => s + t.progress, 0) / remaining.length)
     : 0
-  await prisma.project.update({ where: { id: projectId }, data: { progress: avg } })
+  await prisma.project.update({ where: { id: projectId }, data: { progress: progressAfterDelete } })
 
   return NextResponse.json({ ok: true })
 }
