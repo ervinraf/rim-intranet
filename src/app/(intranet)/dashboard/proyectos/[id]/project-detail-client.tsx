@@ -161,17 +161,28 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
     setDeletingTask(null)
   }
 
-  async function handleProgressChange(taskId: string, progress: number) {
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, progress } : t)))
+  function handleProgressChange(taskId: string, progress: number) {
+    setTasks((prev) => {
+      const updated = prev.map((t) => (t.id === taskId ? { ...t, progress } : t))
+      const avg = updated.length
+        ? Math.round(updated.reduce((s, t) => s + t.progress, 0) / updated.length)
+        : 0
+      setProject((p) => ({ ...p, progress: avg }))
+      return updated
+    })
   }
 
   async function saveProgress() {
     setSaving(true)
-    await fetch(`/api/projects/${project.id}/tasks`, {
+    const res = await fetch(`/api/projects/${project.id}/tasks`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tasks: tasks.map((t) => ({ id: t.id, progress: t.progress })) }),
     })
+    if (res.ok) {
+      const { projectProgress } = await res.json()
+      setProject((p) => ({ ...p, progress: projectProgress }))
+    }
     setSaving(false)
   }
 
