@@ -10,6 +10,8 @@ interface Task {
   name: string
   startDate: string
   endDate: string
+  actualStartDate?: string | null
+  actualEndDate?: string | null
   progress: number
   color?: string | null
 }
@@ -33,8 +35,8 @@ const TASK_COLORS = [
   "bg-teal-500",
 ]
 
-const CELL_WIDTH = 36 // px per day
-const ROW_HEIGHT = 52
+const CELL_WIDTH = 36
+const ROW_HEIGHT = 64
 
 export function GanttChart({
   tasks,
@@ -49,8 +51,10 @@ export function GanttChart({
     : addDays(
         tasks.reduce(
           (max, t) => {
-            const d = new Date(t.endDate)
-            return d > max ? d : max
+            const dates = [new Date(t.endDate)]
+            if (t.actualEndDate) dates.push(new Date(t.actualEndDate))
+            const latest = dates.reduce((a, b) => (b > a ? b : a))
+            return latest > max ? latest : max
           },
           new Date(projectStart)
         ),
@@ -60,7 +64,6 @@ export function GanttChart({
   const totalDays = differenceInDays(end, start) + 1
   const days = Array.from({ length: totalDays }, (_, i) => addDays(start, i))
 
-  // Group days by month for header
   const months = useMemo(() => {
     const map: { label: string; count: number }[] = []
     let current = ""
@@ -81,16 +84,37 @@ export function GanttChart({
 
   const today = startOfDay(new Date())
   const todayOffset = differenceInDays(today, start)
+  const totalWidth = totalDays * CELL_WIDTH
 
-  function getTaskStyle(task: Task) {
-    const taskStart = startOfDay(new Date(task.startDate))
-    const taskEnd = startOfDay(new Date(task.endDate))
-    const left = differenceInDays(taskStart, start) * CELL_WIDTH
-    const width = Math.max((differenceInDays(taskEnd, taskStart) + 1) * CELL_WIDTH, CELL_WIDTH)
+  function getBarStyle(dateStart: string, dateEnd: string) {
+    const s = startOfDay(new Date(dateStart))
+    const e = startOfDay(new Date(dateEnd))
+    const left = differenceInDays(s, start) * CELL_WIDTH
+    const width = Math.max((differenceInDays(e, s) + 1) * CELL_WIDTH, CELL_WIDTH)
     return { left, width }
   }
 
-  const totalWidth = totalDays * CELL_WIDTH
+  function getActualColor(task: Task) {
+    if (!task.actualEndDate) return "bg-slate-400"
+    const plannedEnd = startOfDay(new Date(task.endDate))
+    const actualEnd = startOfDay(new Date(task.actualEndDate))
+    const actualStart = task.actualStartDate ? startOfDay(new Date(task.actualStartDate)) : null
+    const plannedStart = startOfDay(new Date(task.startDate))
+
+    if (actualStart && actualStart < plannedStart) return "bg-yellow-400"
+    if (actualEnd <= plannedEnd) return "bg-emerald-500"
+    return "bg-red-500"
+  }
+
+  function getActualLabel(task: Task) {
+    if (!task.actualEndDate) return null
+    const plannedEnd = startOfDay(new Date(task.endDate))
+    const actualEnd = startOfDay(new Date(task.actualEndDate))
+    const diff = differenceInDays(actualEnd, plannedEnd)
+    if (diff === 0) return "A tiempo"
+    if (diff > 0) return `+${diff}d`
+    return `${diff}d`
+  }
 
   return (
     <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
@@ -135,9 +159,35 @@ export function GanttChart({
           </div>
         </div>
 
+        {/* Legend */}
+        <div className="flex items-center gap-4 px-3 py-1.5 border-b border-slate-100 bg-slate-50">
+          <span className="text-xs text-slate-400">Leyenda:</span>
+          <span className="flex items-center gap-1 text-xs text-slate-500">
+            <span className="w-3 h-2 rounded-sm bg-slate-200 border border-slate-300 inline-block" /> Plan
+          </span>
+          <span className="flex items-center gap-1 text-xs text-slate-500">
+            <span className="w-3 h-2 rounded-sm bg-emerald-500 inline-block" /> A tiempo
+          </span>
+          <span className="flex items-center gap-1 text-xs text-slate-500">
+            <span className="w-3 h-2 rounded-sm bg-red-500 inline-block" /> Tarde
+          </span>
+          <span className="flex items-center gap-1 text-xs text-slate-500">
+            <span className="w-3 h-2 rounded-sm bg-yellow-400 inline-block" /> Adelantado
+          </span>
+        </div>
+
         {/* Task rows */}
         {tasks.map((task, idx) => {
-          const { left, width } = getTaskStyle(task)
+          const planStyle = getBarStyle(task.startDate, task.endDate)
+          const hasActual = !!(task.actualStartDate || task.actualEndDate)
+          const actualStyle = hasActual
+            ? getBarStyle(
+                task.actualStartDate ?? task.startDate,
+                task.actualEndDate ?? task.endDate
+              )
+            : null
+          const actualColor = getActualColor(task)
+          const actualLabel = getActualLabel(task)
           const colorClass = task.color ?? TASK_COLORS[idx % TASK_COLORS.length]
 
           return (
@@ -153,6 +203,15 @@ export function GanttChart({
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-slate-800 truncate">{task.name}</p>
                     <p className="text-xs text-slate-400">{task.progress}%</p>
+                    {hasActual && actualLabel && (
+                      <p className={cn(
+                        "text-xs font-medium",
+                        actualLabel === "A tiempo" ? "text-emerald-600" :
+                        actualLabel.startsWith("+") ? "text-red-500" : "text-yellow-600"
+                      )}>
+                        Real: {actualLabel}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -178,31 +237,72 @@ export function GanttChart({
                   />
                 )}
 
-                {/* Task bar */}
+                {/* Plan bar */}
                 <div
-                  className="absolute top-3 rounded-md overflow-hidden shadow-sm"
-                  style={{ left, width, height: ROW_HEIGHT - 24 }}
+                  className="absolute rounded-md overflow-hidden"
+                  style={{
+                    left: planStyle.left,
+                    width: planStyle.width,
+                    top: 8,
+                    height: 20,
+                  }}
                 >
-                  {/* Background */}
-                  <div className={cn("w-full h-full opacity-20", colorClass)} />
-                  {/* Progress fill */}
-                  <div
-                    className={cn("absolute top-0 left-0 h-full transition-all duration-500", colorClass)}
-                    style={{ width: `${task.progress}%`, opacity: 0.85 }}
-                  />
-                  {/* Label */}
+                  <div className="w-full h-full bg-slate-200 border border-slate-300 rounded-md" />
                   <div className="absolute inset-0 flex items-center px-2">
-                    <span className="text-white text-xs font-medium drop-shadow truncate">
-                      {task.name}
+                    <span className="text-slate-500 text-xs truncate" style={{ fontSize: 9 }}>
+                      PLAN
                     </span>
                   </div>
                 </div>
 
-                {/* Progress slider — solo en modo edicion */}
-                {!readOnly && onProgressChange && (
+                {/* Real bar */}
+                {actualStyle ? (
+                  <div
+                    className={cn("absolute rounded-md overflow-hidden shadow-sm", actualColor)}
+                    style={{
+                      left: actualStyle.left,
+                      width: actualStyle.width,
+                      top: 34,
+                      height: 20,
+                    }}
+                  >
+                    <div className="absolute inset-0 flex items-center px-2">
+                      <span className="text-white text-xs font-medium truncate" style={{ fontSize: 9 }}>
+                        REAL
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  /* Progress bar mode when no actual dates */
+                  !hasActual && (
+                    <div
+                      className="absolute rounded-md overflow-hidden shadow-sm"
+                      style={{
+                        left: planStyle.left,
+                        width: planStyle.width,
+                        top: 34,
+                        height: 20,
+                      }}
+                    >
+                      <div className={cn("w-full h-full opacity-20", colorClass)} />
+                      <div
+                        className={cn("absolute top-0 left-0 h-full transition-all duration-500", colorClass)}
+                        style={{ width: `${task.progress}%`, opacity: 0.85 }}
+                      />
+                      <div className="absolute inset-0 flex items-center px-2">
+                        <span className="text-white text-xs font-medium drop-shadow truncate" style={{ fontSize: 9 }}>
+                          {task.progress}%
+                        </span>
+                      </div>
+                    </div>
+                  )
+                )}
+
+                {/* Progress slider — solo en modo edicion sin fechas reales */}
+                {!readOnly && onProgressChange && !hasActual && (
                   <div
                     className="absolute bottom-1"
-                    style={{ left: left, width }}
+                    style={{ left: planStyle.left, width: planStyle.width }}
                   >
                     <input
                       type="range"

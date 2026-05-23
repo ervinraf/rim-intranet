@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Camera, Link2, Plus, Send, MapPin, User, Calendar, ChevronDown, ChevronUp,
-  FileDown, Mail, MessageCircle, Star, Pencil, Trash2, Check, X,
+  FileDown, Mail, MessageCircle, Star, Pencil, Trash2, Check, X, Settings, RotateCcw,
 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -28,6 +28,8 @@ interface Task {
   description?: string | null
   startDate: string
   endDate: string
+  actualStartDate?: string | null
+  actualEndDate?: string | null
   progress: number
   color?: string | null
   photos: Photo[]
@@ -83,6 +85,20 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
   const [editingTask, setEditingTask] = useState<string | null>(null)
   const [editTaskForm, setEditTaskForm] = useState({ name: "", startDate: "", endDate: "", description: "" })
   const [deletingTask, setDeletingTask] = useState<string | null>(null)
+  const [editingActual, setEditingActual] = useState<string | null>(null)
+  const [actualForm, setActualForm] = useState({ actualStartDate: "", actualEndDate: "" })
+  const [editProjectModal, setEditProjectModal] = useState(false)
+  const [editProjectForm, setEditProjectForm] = useState({
+    name: initial.name,
+    clientName: initial.clientName,
+    clientEmail: initial.clientEmail ?? "",
+    location: initial.location ?? "",
+    description: initial.description ?? "",
+    startDate: initial.startDate.slice(0, 10),
+    endDate: initial.endDate?.slice(0, 10) ?? "",
+    status: initial.status,
+  })
+  const [savingProject, setSavingProject] = useState(false)
 
   const clientPortalUrl = `${window.location.origin}/cliente?token=${project.accessToken}`
   const [emailModal, setEmailModal] = useState(false)
@@ -193,6 +209,62 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
     }
   }
 
+  async function saveEditProject() {
+    setSavingProject(true)
+    const res = await fetch(`/api/projects/${project.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...editProjectForm,
+        endDate: editProjectForm.endDate || undefined,
+        clientEmail: editProjectForm.clientEmail || undefined,
+      }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setProject((p) => ({ ...p, ...updated }))
+      setEditProjectModal(false)
+    }
+    setSavingProject(false)
+  }
+
+  async function resetAllProgress() {
+    if (!confirm("¿Resetear el progreso de todas las tareas a 0%?")) return
+    setSaving(true)
+    await fetch(`/api/projects/${project.id}/tasks`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tasks: tasks.map((t) => ({ id: t.id, progress: 0 })) }),
+    })
+    setTasks((prev) => prev.map((t) => ({ ...t, progress: 0 })))
+    setProject((p) => ({ ...p, progress: 0 }))
+    setSaving(false)
+  }
+
+  function startEditActual(task: Task) {
+    setEditingActual(task.id)
+    setActualForm({
+      actualStartDate: task.actualStartDate?.slice(0, 10) ?? "",
+      actualEndDate: task.actualEndDate?.slice(0, 10) ?? "",
+    })
+  }
+
+  async function saveActualDates(taskId: string) {
+    const res = await fetch(`/api/projects/${project.id}/tasks/${taskId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actualStartDate: actualForm.actualStartDate || null,
+        actualEndDate: actualForm.actualEndDate || null,
+      }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, ...updated } : t)))
+      setEditingActual(null)
+    }
+  }
+
   async function handleAddTask() {
     const res = await fetch(`/api/projects/${project.id}/tasks`, {
       method: "POST",
@@ -246,6 +318,10 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
 
         {isAdmin && (
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => setEditProjectModal(true)}>
+              <Settings className="w-4 h-4 mr-1.5" />
+              Editar proyecto
+            </Button>
             <Button variant="outline" size="sm" onClick={downloadPDF}>
               <FileDown className="w-4 h-4 mr-1.5" />
               PDF
@@ -277,6 +353,10 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
             >
               <Star className="w-4 h-4 mr-1.5" />
               Encuesta cliente
+            </Button>
+            <Button variant="outline" size="sm" onClick={resetAllProgress} disabled={saving} className="text-slate-600">
+              <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+              Limpiar avances
             </Button>
             <Button size="sm" onClick={saveProgress} disabled={saving}>
               {saving ? "Guardando..." : "Guardar avances"}
@@ -427,6 +507,13 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
                       {isAdmin && (
                         <>
                           <button
+                            className="p-1 rounded hover:bg-blue-50 text-slate-400 hover:text-blue-600"
+                            onClick={() => startEditActual(task)}
+                            title="Registrar fechas reales"
+                          >
+                            <Calendar className="w-3.5 h-3.5" />
+                          </button>
+                          <button
                             className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600"
                             onClick={() => startEditTask(task)}
                             title="Editar actividad"
@@ -448,6 +535,40 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
                       ) : (
                         <ChevronDown className="w-4 h-4 text-slate-400" />
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {editingActual === task.id && (
+                  <div className="px-4 py-3 bg-blue-50 border-t border-blue-100 space-y-2">
+                    <p className="text-xs font-medium text-blue-700">Fechas reales de ejecucion</p>
+                    <div className="flex gap-2">
+                      <div className="flex-1 space-y-1">
+                        <label className="text-xs text-slate-500">Inicio real</label>
+                        <Input
+                          type="date"
+                          value={actualForm.actualStartDate}
+                          onChange={(e) => setActualForm((p) => ({ ...p, actualStartDate: e.target.value }))}
+                          className="text-sm h-8"
+                        />
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <label className="text-xs text-slate-500">Fin real</label>
+                        <Input
+                          type="date"
+                          value={actualForm.actualEndDate}
+                          onChange={(e) => setActualForm((p) => ({ ...p, actualEndDate: e.target.value }))}
+                          className="text-sm h-8"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Button size="sm" onClick={() => saveActualDates(task.id)}>
+                        <Check className="w-3.5 h-3.5 mr-1" /> Guardar
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingActual(null)}>
+                        <X className="w-3.5 h-3.5 mr-1" /> Cancelar
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -577,6 +698,65 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
         </div>
       </div>
     </div>
+
+    {/* Modal editar proyecto */}
+    {editProjectModal && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl">
+          <div className="px-6 py-4 border-b border-slate-200">
+            <h2 className="font-semibold text-slate-900">Editar proyecto</h2>
+          </div>
+          <div className="px-6 py-4 space-y-3 max-h-[70vh] overflow-y-auto">
+            <div className="space-y-1.5">
+              <Label>Nombre del proyecto</Label>
+              <Input value={editProjectForm.name} onChange={(e) => setEditProjectForm((p) => ({ ...p, name: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Cliente</Label>
+                <Input value={editProjectForm.clientName} onChange={(e) => setEditProjectForm((p) => ({ ...p, clientName: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Email cliente</Label>
+                <Input type="email" value={editProjectForm.clientEmail} onChange={(e) => setEditProjectForm((p) => ({ ...p, clientEmail: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Ubicacion</Label>
+              <Input value={editProjectForm.location} onChange={(e) => setEditProjectForm((p) => ({ ...p, location: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Fecha inicio</Label>
+                <Input type="date" value={editProjectForm.startDate} onChange={(e) => setEditProjectForm((p) => ({ ...p, startDate: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fecha fin</Label>
+                <Input type="date" value={editProjectForm.endDate} min={editProjectForm.startDate} onChange={(e) => setEditProjectForm((p) => ({ ...p, endDate: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Estado</Label>
+              <select
+                value={editProjectForm.status}
+                onChange={(e) => setEditProjectForm((p) => ({ ...p, status: e.target.value as "NUEVO" | "EN_DESARROLLO" | "CERRADO" }))}
+                className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
+              >
+                <option value="NUEVO">Nuevo</option>
+                <option value="EN_DESARROLLO">En desarrollo</option>
+                <option value="CERRADO">Cerrado</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-2 px-6 py-4 border-t border-slate-200">
+            <Button variant="outline" onClick={() => setEditProjectModal(false)} className="flex-1">Cancelar</Button>
+            <Button onClick={saveEditProject} disabled={savingProject || !editProjectForm.name} className="flex-1">
+              {savingProject ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* Modal email */}
     {emailModal && (

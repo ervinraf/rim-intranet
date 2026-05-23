@@ -8,6 +8,8 @@ const patchSchema = z.object({
   description: z.string().optional().nullable(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  actualStartDate: z.string().optional().nullable(),
+  actualEndDate: z.string().optional().nullable(),
   progress: z.number().min(0).max(100).optional(),
   color: z.string().optional().nullable(),
 })
@@ -23,7 +25,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const parsed = patchSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const { startDate, endDate, ...rest } = parsed.data
+  const { startDate, endDate, actualStartDate, actualEndDate, ...rest } = parsed.data
 
   const task = await prisma.projectTask.update({
     where: { id: taskId, projectId },
@@ -31,6 +33,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       ...rest,
       ...(startDate ? { startDate: new Date(startDate) } : {}),
       ...(endDate ? { endDate: new Date(endDate) } : {}),
+      ...(actualStartDate !== undefined ? { actualStartDate: actualStartDate ? new Date(actualStartDate) : null } : {}),
+      ...(actualEndDate !== undefined ? { actualEndDate: actualEndDate ? new Date(actualEndDate) : null } : {}),
     },
   })
 

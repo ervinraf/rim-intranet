@@ -333,19 +333,21 @@ model Project {
 }
 
 model ProjectTask {
-  id          String         @id @default(cuid())
-  projectId   String
-  name        String
-  description String?
-  startDate   DateTime
-  endDate     DateTime
-  progress    Int            @default(0)
-  order       Int            @default(0)
-  color       String?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  photos      ProjectPhoto[]
-  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id              String         @id @default(cuid())
+  projectId       String
+  name            String
+  description     String?
+  startDate       DateTime
+  endDate         DateTime
+  actualStartDate DateTime?
+  actualEndDate   DateTime?
+  progress        Int            @default(0)
+  order           Int            @default(0)
+  color           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  photos          ProjectPhoto[]
+  project         Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId], map: "ProjectTask_projectId_fkey")
 }
