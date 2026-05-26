@@ -299,7 +299,7 @@ export function ImportAttendanceModal({ onImported, onClose }: Props) {
                             </td>
                             <td className="px-3 py-1.5 text-slate-500">{r.checkIn || "—"}</td>
                             <td className="px-3 py-1.5 text-slate-500">{r.checkOut || "—"}</td>
-                            <td className="px-3 py-1.5 text-slate-500">{TYPE_LABELS[r.type] ?? r.type || "Normal"}</td>
+                            <td className="px-3 py-1.5 text-slate-500">{TYPE_LABELS[r.type] ?? (r.type || "Normal")}</td>
                           </tr>
                         ))}
                       </tbody>
