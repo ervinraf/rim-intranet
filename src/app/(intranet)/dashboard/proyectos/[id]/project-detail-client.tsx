@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useCallback } from "react"
 import { GanttChart } from "@/components/gantt/gantt-chart"
 import { ProjectForms } from "@/components/projects/project-forms"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Camera, Link2, Plus, Send, MapPin, User, Calendar, ChevronDown, ChevronUp,
-  FileDown, Mail, MessageCircle, Star, Pencil, Trash2, Check, X, Settings, RotateCcw, FileSpreadsheet,
+  FileDown, Mail, MessageCircle, Star, Pencil, Trash2, Check, X, Settings, RotateCcw, FileSpreadsheet, Image,
 } from "lucide-react"
 import { ImportTasksModal } from "@/components/projects/import-tasks-modal"
 import { format } from "date-fns"
@@ -103,6 +103,30 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
   })
   const [savingProject, setSavingProject] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [exportingPng, setExportingPng] = useState(false)
+  const ganttRef = useRef<HTMLDivElement>(null)
+
+  const exportGanttPng = useCallback(async () => {
+    const el = ganttRef.current
+    if (!el) return
+    setExportingPng(true)
+    try {
+      const { toPng } = await import("html-to-image")
+      const dataUrl = await toPng(el, {
+        backgroundColor: "#ffffff",
+        pixelRatio: 2,
+        width: el.scrollWidth,
+        height: el.scrollHeight,
+        style: { overflow: "visible", width: el.scrollWidth + "px", height: el.scrollHeight + "px" },
+      })
+      const link = document.createElement("a")
+      link.download = `Gantt_${project.name.replace(/[^a-zA-Z0-9]/g, "_")}.png`
+      link.href = dataUrl
+      link.click()
+    } finally {
+      setExportingPng(false)
+    }
+  }, [project.name])
 
   const clientPortalUrl = `${window.location.origin}/cliente?token=${project.accessToken}`
   const [emailModal, setEmailModal] = useState(false)
@@ -489,30 +513,44 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
             </div>
           ) : (
             <>
-              <GanttChart
-                tasks={tasksByDate}
-                projectStart={project.startDate}
-                projectEnd={project.endDate}
-                onProgressChange={isAdmin ? handleProgressChange : undefined}
-                readOnly={!isAdmin}
-              />
-              {isAdmin && (
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-slate-500"
-                    onClick={resetAllProgress}
-                    disabled={saving}
-                  >
-                    <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
-                    Resetear
-                  </Button>
-                  <Button size="sm" onClick={saveProgress} disabled={saving}>
-                    {saving ? "Guardando..." : "Guardar avances"}
-                  </Button>
-                </div>
-              )}
+              <div ref={ganttRef}>
+                <GanttChart
+                  tasks={tasksByDate}
+                  projectStart={project.startDate}
+                  projectEnd={project.endDate}
+                  onProgressChange={isAdmin ? handleProgressChange : undefined}
+                  readOnly={!isAdmin}
+                />
+              </div>
+              <div className="flex justify-between items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-slate-500"
+                  onClick={exportGanttPng}
+                  disabled={exportingPng}
+                >
+                  <Image className="w-3.5 h-3.5 mr-1.5" />
+                  {exportingPng ? "Exportando..." : "Exportar PNG"}
+                </Button>
+                {isAdmin && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-slate-500"
+                      onClick={resetAllProgress}
+                      disabled={saving}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                      Resetear
+                    </Button>
+                    <Button size="sm" onClick={saveProgress} disabled={saving}>
+                      {saving ? "Guardando..." : "Guardar avances"}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </>
           )}
 
