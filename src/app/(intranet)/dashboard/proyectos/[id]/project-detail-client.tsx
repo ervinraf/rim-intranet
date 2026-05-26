@@ -680,7 +680,7 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
           {/* Bitacora de actualizaciones */}
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-slate-600">Bitacora de avances</CardTitle>
+              <CardTitle className="text-sm font-medium text-slate-600">Notas importantes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {isAdmin && (
@@ -688,7 +688,7 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
                   <Textarea
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    placeholder="Agrega una nota de avance..."
+                    placeholder="Accidente, retraso, incidencia importante..."
                     rows={2}
                     className="text-sm"
                   />
@@ -700,7 +700,7 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
               )}
               <div className="space-y-3 max-h-80 overflow-y-auto">
                 {project.updates.length === 0 && (
-                  <p className="text-xs text-slate-400">Sin actualizaciones aun</p>
+                  <p className="text-xs text-slate-400">Sin notas aun</p>
                 )}
                 {project.updates.map((u) => (
                   <div key={u.id} className="border-l-2 border-amber-300 pl-3 group">
