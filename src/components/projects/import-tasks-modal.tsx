@@ -51,17 +51,49 @@ function parseDate(val: any): string | null {
 }
 
 function downloadTemplate() {
+  // Sheet 1: blank with headers only
   const ws = XLSX.utils.aoa_to_sheet([
     ["Actividad", "Inicio Plan", "Fin Plan", "Inicio Real", "Fin Real"],
-    ["Recepcion de equipos", "2026-05-18", "2026-05-18", "", ""],
-    ["Desembalaje y posicionamiento", "2026-05-19", "2026-05-20", "2026-05-19", ""],
-    ["Ensamble de estructura", "2026-05-21", "2026-05-23", "", ""],
   ])
+
+  // Cell notes explaining each column
+  const note = (cell: string, text: string) => {
+    if (!ws[cell].c) ws[cell].c = []
+    ws[cell].c.push({ a: "Intranet", t: text })
+  }
+  note("A1", "Nombre de la actividad o tarea.\nEj: Instalacion de grua, Ensamble de estructura...")
+  note("B1", "Fecha planeada de INICIO.\nFormato recomendado: YYYY-MM-DD\nEjemplo: 2026-05-18\nTambien acepta: 18/05/2026")
+  note("C1", "Fecha planeada de TERMINO.\nFormato recomendado: YYYY-MM-DD\nEjemplo: 2026-05-20\nTambien acepta: 20/05/2026")
+  note("D1", "Fecha REAL en que inicio la actividad.\nDejar en blanco si aun no ha comenzado.\nSe puede llenar despues desde la intranet.")
+  note("E1", "Fecha REAL en que termino la actividad.\nDejar en blanco si aun no ha concluido.\nSe puede llenar despues desde la intranet.")
 
   ws["!cols"] = [{ wch: 45 }, { wch: 13 }, { wch: 13 }, { wch: 13 }, { wch: 13 }]
 
+  // Sheet 2: Instrucciones
+  const inst = XLSX.utils.aoa_to_sheet([
+    ["PLANTILLA DE ACTIVIDADES - INTRANET RIM RIGGING"],
+    [""],
+    ["Llena la hoja 'Actividades' con las tareas del proyecto."],
+    ["No elimines ni modifiques la fila de encabezados (primera fila)."],
+    [""],
+    ["COLUMNA", "DESCRIPCION", "EJEMPLO"],
+    ["Actividad", "Nombre de la tarea o actividad del proyecto", "Instalacion de estructura"],
+    ["Inicio Plan", "Fecha PLANEADA de inicio (YYYY-MM-DD o DD/MM/YYYY)", "2026-05-18"],
+    ["Fin Plan", "Fecha PLANEADA de termino (YYYY-MM-DD o DD/MM/YYYY)", "2026-05-20"],
+    ["Inicio Real", "Fecha REAL en que inicio (opcional, dejar en blanco si no aplica)", "2026-05-19"],
+    ["Fin Real", "Fecha REAL en que termino (opcional, dejar en blanco si no concluye)", ""],
+    [""],
+    ["NOTAS IMPORTANTES:"],
+    ["", "Las columnas 'Real' son opcionales. Dejalas en blanco y registra las fechas reales desde la intranet conforme avance el proyecto."],
+    ["", "El sistema detecta automaticamente las columnas por nombre, sin importar el orden."],
+    ["", "Puedes subir archivos .xlsx o .xls"],
+    ["", "Filas vacias son ignoradas automaticamente."],
+  ])
+  inst["!cols"] = [{ wch: 16 }, { wch: 60 }, { wch: 18 }]
+
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, ws, "Actividades")
+  XLSX.utils.book_append_sheet(wb, inst, "Instrucciones")
   XLSX.writeFile(wb, "plantilla_actividades.xlsx")
 }
 

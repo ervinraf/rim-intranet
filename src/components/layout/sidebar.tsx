@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard, Users, Clock, FolderOpen,
   Wrench, HardHat, LogOut, GanttChartSquare, Settings, Receipt,
-  CalendarDays, ClipboardList, UserCheck, Palmtree, Star, UserPlus, BarChart3,
+  CalendarDays, ClipboardList, UserCheck, Palmtree, Star, UserPlus, BarChart3, FileDown,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -113,6 +113,7 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
       {
         title: "Sistema",
         items: [
+          { label: "Plantillas", href: "/dashboard/plantillas", icon: FileDown },
           { label: "Configuracion", href: "/dashboard/configuracion", icon: Settings },
         ],
       },

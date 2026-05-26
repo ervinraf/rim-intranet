@@ -324,6 +324,10 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
   }
 
   const cfg = statusConfig[project.status]
+  // Gantt: cronologico ascendente (primera actividad arriba)
+  const tasksByDate = [...tasks].sort((a, b) => a.startDate.localeCompare(b.startDate))
+  // Lista de fotos: descendente (ultima actividad arriba, mas cerca del Gantt)
+  const tasksByDateDesc = [...tasks].sort((a, b) => b.startDate.localeCompare(a.startDate))
 
   return (
     <>
@@ -486,7 +490,7 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
           ) : (
             <>
               <GanttChart
-                tasks={tasks}
+                tasks={tasksByDate}
                 projectStart={project.startDate}
                 projectEnd={project.endDate}
                 onProgressChange={isAdmin ? handleProgressChange : undefined}
@@ -515,7 +519,7 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
           {/* Fotos por actividad */}
           <div className="space-y-3 mt-4">
             <h2 className="text-base font-semibold text-slate-800">Fotos por actividad</h2>
-            {tasks.map((task) => (
+            {tasksByDateDesc.map((task) => (
               <Card key={task.id} className="border-slate-200">
                 {editingTask === task.id ? (
                   <div className="px-4 py-3 space-y-2">
