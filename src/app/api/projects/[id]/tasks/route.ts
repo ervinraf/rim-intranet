@@ -8,6 +8,8 @@ const taskSchema = z.object({
   description: z.string().optional(),
   startDate: z.string(),
   endDate: z.string(),
+  actualStartDate: z.string().optional().nullable(),
+  actualEndDate: z.string().optional().nullable(),
   progress: z.number().min(0).max(100).default(0),
   order: z.number().default(0),
   color: z.string().optional(),
@@ -25,12 +27,15 @@ export async function POST(
   const parsed = taskSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
+  const { actualStartDate, actualEndDate, ...rest } = parsed.data
   const task = await prisma.projectTask.create({
     data: {
-      ...parsed.data,
+      ...rest,
       projectId,
-      startDate: new Date(parsed.data.startDate),
-      endDate: new Date(parsed.data.endDate),
+      startDate: new Date(rest.startDate),
+      endDate: new Date(rest.endDate),
+      actualStartDate: actualStartDate ? new Date(actualStartDate) : null,
+      actualEndDate: actualEndDate ? new Date(actualEndDate) : null,
     },
   })
 

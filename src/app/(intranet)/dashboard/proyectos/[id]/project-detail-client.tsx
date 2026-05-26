@@ -11,8 +11,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Camera, Link2, Plus, Send, MapPin, User, Calendar, ChevronDown, ChevronUp,
-  FileDown, Mail, MessageCircle, Star, Pencil, Trash2, Check, X, Settings, RotateCcw,
+  FileDown, Mail, MessageCircle, Star, Pencil, Trash2, Check, X, Settings, RotateCcw, FileSpreadsheet,
 } from "lucide-react"
+import { ImportTasksModal } from "@/components/projects/import-tasks-modal"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -101,6 +102,7 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
     status: initial.status,
   })
   const [savingProject, setSavingProject] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
 
   const clientPortalUrl = `${window.location.origin}/cliente?token=${project.accessToken}`
   const [emailModal, setEmailModal] = useState(false)
@@ -416,14 +418,24 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-slate-800">Diagrama de Gantt</h2>
             {isAdmin && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setNewTaskForm(!newTaskForm)}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Actividad
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowImportModal(true)}
+                >
+                  <FileSpreadsheet className="w-4 h-4 mr-1" />
+                  Importar Excel
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNewTaskForm(!newTaskForm)}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Actividad
+                </Button>
+              </div>
             )}
           </div>
 
@@ -852,6 +864,23 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
           </div>
         </div>
       </div>
+    )}
+
+    {/* Modal importar Excel */}
+    {showImportModal && (
+      <ImportTasksModal
+        projectId={project.id}
+        onClose={() => setShowImportModal(false)}
+        onImported={(created) => {
+          const newTasks = created.map((t: any) => ({ ...t, photos: [] }))
+          setTasks((prev) => [...prev, ...newTasks])
+          const allTasks = [...tasks, ...newTasks]
+          const avg = allTasks.length
+            ? Math.round(allTasks.reduce((s: number, t: any) => s + t.progress, 0) / allTasks.length)
+            : 0
+          setProject((p) => ({ ...p, progress: avg }))
+        }}
+      />
     )}
 
     {/* Modal email */}
