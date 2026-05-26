@@ -81,31 +81,40 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Tu usuario no tiene perfil de empleado" }, { status: 403 })
   }
 
-  const record = await prisma.attendance.upsert({
-    where: {
-      employeeId_date: {
-        employeeId: rest.employeeId,
-        date: new Date(date),
+  let record
+  try {
+    record = await prisma.attendance.upsert({
+      where: {
+        employeeId_date: {
+          employeeId: rest.employeeId,
+          date: new Date(date),
+        },
       },
-    },
-    update: {
-      checkIn: checkIn ? new Date(checkIn) : null,
-      checkOut: checkOut ? new Date(checkOut) : null,
-      type: rest.type,
-      notes: rest.notes ?? null,
-      registeredById: session.user.id,
-    },
-    create: {
-      ...rest,
-      date: new Date(date),
-      checkIn: checkIn ? new Date(checkIn) : null,
-      checkOut: checkOut ? new Date(checkOut) : null,
-      registeredById: session.user.id,
-    },
-    include: {
-      employee: { select: { fullName: true, department: { select: { name: true } } } },
-    },
-  })
+      update: {
+        checkIn: checkIn ? new Date(checkIn) : null,
+        checkOut: checkOut ? new Date(checkOut) : null,
+        type: rest.type,
+        notes: rest.notes ?? null,
+        registeredById: session.user.id,
+      },
+      create: {
+        ...rest,
+        date: new Date(date),
+        checkIn: checkIn ? new Date(checkIn) : null,
+        checkOut: checkOut ? new Date(checkOut) : null,
+        registeredById: session.user.id,
+      },
+      include: {
+        employee: { select: { fullName: true, department: { select: { name: true } } } },
+      },
+    })
+  } catch (err: any) {
+    console.error("Attendance upsert error:", err)
+    return NextResponse.json(
+      { error: err?.message ?? "Error al guardar el registro de asistencia" },
+      { status: 500 }
+    )
+  }
 
   return NextResponse.json(record, { status: 201 })
 }

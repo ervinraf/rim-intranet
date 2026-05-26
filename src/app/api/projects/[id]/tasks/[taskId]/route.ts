@@ -51,11 +51,10 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     },
   })
 
-  // Recalcula progreso del proyecto: tareas completadas / total
+  // Recalcula progreso del proyecto: promedio de task.progress
   const allTasks = await prisma.projectTask.findMany({ where: { projectId } })
-  const completed = allTasks.filter((t) => t.actualEndDate !== null).length
   const projectProgress = allTasks.length
-    ? Math.round((completed / allTasks.length) * 100)
+    ? Math.round(allTasks.reduce((s, t) => s + t.progress, 0) / allTasks.length)
     : 0
   await prisma.project.update({ where: { id: projectId }, data: { progress: projectProgress } })
 

@@ -45,8 +45,21 @@ export async function PATCH(
   if (!session?.user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
 
   const { id: projectId } = await params
+  const body = await req.json()
 
-  // Recalcula progreso del proyecto: promedio de progress de cada tarea (0/50/100 segun fechas reales)
+  // Guarda el progress de cada tarea individualmente
+  if (Array.isArray(body.tasks) && body.tasks.length > 0) {
+    await Promise.all(
+      body.tasks.map(({ id, progress }: { id: string; progress: number }) =>
+        prisma.projectTask.updateMany({
+          where: { id, projectId },
+          data: { progress: Math.min(100, Math.max(0, progress)) },
+        })
+      )
+    )
+  }
+
+  // Recalcula progreso del proyecto como promedio de todos los tasks
   const allTasks = await prisma.projectTask.findMany({ where: { projectId } })
   const projectProgress = allTasks.length
     ? Math.round(allTasks.reduce((s, t) => s + t.progress, 0) / allTasks.length)
