@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Download, Search, ChevronLeft, ChevronRight, BarChart2, Users } from "lucide-react"
+import { Plus, Download, Search, ChevronLeft, ChevronRight, BarChart2, Users, FileSpreadsheet } from "lucide-react"
+import { ImportAttendanceModal } from "@/components/attendance/import-attendance-modal"
 import {
   format, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   addMonths, subMonths, addWeeks, subWeeks, addDays, subDays,
@@ -90,6 +91,7 @@ export function AsistenciaClient({
   const [filterEmployee, setFilterEmployee] = useState("all")
   const [showForm, setShowForm] = useState(false)
   const [showChart, setShowChart] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [form, setForm] = useState({
     employeeId: "", date: new Date().toISOString().slice(0, 10),
     checkIn: "", checkOut: "", type: "NORMAL" as AttendanceType, notes: "",
@@ -238,6 +240,11 @@ export function AsistenciaClient({
               className={showChart ? "bg-slate-100" : ""}
             >
               <BarChart2 className="w-4 h-4 mr-1.5" />Grafica
+            </Button>
+          )}
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => setShowImport(true)}>
+              <FileSpreadsheet className="w-4 h-4 mr-1.5" />Importar Excel
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={exportCsv}>
@@ -467,6 +474,16 @@ export function AsistenciaClient({
           )
         })}
       </div>
+
+      {showImport && (
+        <ImportAttendanceModal
+          onClose={() => setShowImport(false)}
+          onImported={() => {
+            setShowImport(false)
+            window.location.reload()
+          }}
+        />
+      )}
     </div>
   )
 }

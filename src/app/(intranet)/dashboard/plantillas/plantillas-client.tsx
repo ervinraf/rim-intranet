@@ -1,8 +1,9 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Download, FileSpreadsheet, FileText, Users, GanttChartSquare } from "lucide-react"
+import { Download, Users, GanttChartSquare, UserCheck } from "lucide-react"
 import * as XLSX from "xlsx"
+import { downloadAttendanceTemplate } from "@/components/attendance/import-attendance-modal"
 
 interface Template {
   id: string
@@ -124,6 +125,23 @@ function downloadEmpleados() {
 }
 
 const templates: Template[] = [
+  {
+    id: "asistencia",
+    title: "Asistencia en lotes",
+    description: "Importa registros de asistencia de uno o varios empleados en un solo archivo. Si ya existe un registro para ese empleado y fecha, se actualiza.",
+    format: "Excel (.xlsx)",
+    module: "Asistencia",
+    icon: UserCheck,
+    columns: [
+      { name: "Empleado", description: "Nombre completo o numero de empleado", required: true, example: "Carlos Gonzalez Lopez" },
+      { name: "Fecha", description: "Fecha del registro (YYYY-MM-DD o DD/MM/YYYY)", required: true, example: "2026-05-18" },
+      { name: "Entrada", description: "Hora de entrada HH:MM en 24 horas", required: false, example: "08:00" },
+      { name: "Salida", description: "Hora de salida HH:MM en 24 horas", required: false, example: "17:30" },
+      { name: "Tipo", description: "NORMAL / TARDANZA / FALTA / VACACIONES / PERMISO / INCAPACIDAD", required: false, example: "NORMAL" },
+      { name: "Notas", description: "Observaciones opcionales", required: false, example: "Permiso medico" },
+    ],
+    onDownload: downloadAttendanceTemplate,
+  },
   {
     id: "actividades",
     title: "Actividades del proyecto (Gantt)",
