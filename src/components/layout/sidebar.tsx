@@ -321,6 +321,11 @@ export function Sidebar({ userRole, userName, department, companyName = "RIM Rig
         ))}
       </nav>
 
+      {/* Version */}
+      <div className="px-6 pb-1">
+        <p className="text-xs" style={{ color: "rgba(148,163,184,.25)" }}>v4.0</p>
+      </div>
+
       {/* User footer */}
       <div className="px-3 py-4" style={{ borderTop: "1px solid rgba(255,255,255,.07)" }}>
         <div className="flex items-center gap-3 px-3 py-2 mb-1">
