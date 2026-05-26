@@ -15,6 +15,21 @@ const taskSchema = z.object({
   color: z.string().optional(),
 })
 
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth()
+  if (!session?.user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+
+  const { id: projectId } = await params
+  const tasks = await prisma.projectTask.findMany({
+    where: { projectId },
+    orderBy: { startDate: "asc" },
+  })
+  return NextResponse.json(tasks)
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

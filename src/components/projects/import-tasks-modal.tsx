@@ -211,30 +211,63 @@ export function ImportTasksModal({ projectId, onImported, onClose }: Props) {
     setLoading(true)
 
     if (replaceAll) {
+      // Borra todo y reimporta
       await fetch(`/api/projects/${projectId}/tasks`, { method: "DELETE" })
+      const created: any[] = []
+      for (let i = 0; i < valid.length; i++) {
+        const t = valid[i]
+        const res = await fetch(`/api/projects/${projectId}/tasks`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: t.name, startDate: t.startDate, endDate: t.endDate,
+            actualStartDate: t.actualStartDate ?? null,
+            actualEndDate: t.actualEndDate ?? null,
+            progress: 0, order: i,
+          }),
+        })
+        if (res.ok) created.push(await res.json())
+      }
+      onImported(created)
+    } else {
+      // Merge inteligente: si coincide fecha de inicio, actualiza; si no, agrega
+      const existing: any[] = await fetch(`/api/projects/${projectId}/tasks`).then((r) => r.json())
+      const existingByDate = new Map(existing.map((t: any) => [t.startDate?.slice(0, 10), t]))
+
+      const created: any[] = []
+      for (let i = 0; i < valid.length; i++) {
+        const t = valid[i]
+        const match = existingByDate.get(t.startDate)
+        if (match) {
+          // Actualiza el nombre y fechas de la actividad existente
+          const res = await fetch(`/api/projects/${projectId}/tasks/${match.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: t.name, endDate: t.endDate,
+              actualStartDate: t.actualStartDate ?? match.actualStartDate ?? null,
+              actualEndDate: t.actualEndDate ?? match.actualEndDate ?? null,
+            }),
+          })
+          if (res.ok) created.push(await res.json())
+        } else {
+          // Agrega como nueva
+          const res = await fetch(`/api/projects/${projectId}/tasks`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: t.name, startDate: t.startDate, endDate: t.endDate,
+              actualStartDate: t.actualStartDate ?? null,
+              actualEndDate: t.actualEndDate ?? null,
+              progress: 0, order: existing.length + i,
+            }),
+          })
+          if (res.ok) created.push(await res.json())
+        }
+      }
+      onImported(created)
     }
 
-    const created: any[] = []
-
-    for (let i = 0; i < valid.length; i++) {
-      const t = valid[i]
-      const res = await fetch(`/api/projects/${projectId}/tasks`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: t.name,
-          startDate: t.startDate,
-          endDate: t.endDate,
-          actualStartDate: t.actualStartDate ?? null,
-          actualEndDate: t.actualEndDate ?? null,
-          progress: 0,
-          order: i,
-        }),
-      })
-      if (res.ok) created.push(await res.json())
-    }
-
-    onImported(created)
     setImported(true)
     setLoading(false)
   }
@@ -362,18 +395,25 @@ export function ImportTasksModal({ projectId, onImported, onClose }: Props) {
 
         <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between gap-4">
           {!imported && validCount > 0 ? (
-            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={replaceAll}
-                onChange={(e) => setReplaceAll(e.target.checked)}
-                className="rounded"
-              />
-              <span>
-                Reemplazar actividades existentes
-                {replaceAll && <span className="ml-1 text-red-500 font-medium">(borra las actuales)</span>}
-              </span>
-            </label>
+            <div className="space-y-0.5">
+              <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={replaceAll}
+                  onChange={(e) => setReplaceAll(e.target.checked)}
+                  className="rounded"
+                />
+                <span>
+                  Borrar todo y reimportar
+                  {replaceAll && <span className="ml-1 text-red-500 font-medium">(elimina las actuales)</span>}
+                </span>
+              </label>
+              {!replaceAll && (
+                <p className="text-xs text-slate-400 ml-5">
+                  Por defecto actualiza las existentes (mismo inicio) y agrega las nuevas
+                </p>
+              )}
+            </div>
           ) : (
             <span />
           )}
