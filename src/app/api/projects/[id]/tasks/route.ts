@@ -42,6 +42,20 @@ export async function POST(
   return NextResponse.json(task, { status: 201 })
 }
 
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth()
+  if (!session?.user) return NextResponse.json({ error: "No autorizado" }, { status: 401 })
+
+  const { id: projectId } = await params
+  await prisma.projectTask.deleteMany({ where: { projectId } })
+  await prisma.project.update({ where: { id: projectId }, data: { progress: 0 } })
+
+  return NextResponse.json({ ok: true })
+}
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

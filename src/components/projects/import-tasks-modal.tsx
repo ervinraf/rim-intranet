@@ -101,6 +101,7 @@ export function ImportTasksModal({ projectId, onImported, onClose }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [tasks, setTasks] = useState<ParsedTask[]>([])
   const [hasActual, setHasActual] = useState(false)
+  const [replaceAll, setReplaceAll] = useState(false)
   const [loading, setLoading] = useState(false)
   const [imported, setImported] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -208,6 +209,11 @@ export function ImportTasksModal({ projectId, onImported, onClose }: Props) {
     if (!valid.length) return
 
     setLoading(true)
+
+    if (replaceAll) {
+      await fetch(`/api/projects/${projectId}/tasks`, { method: "DELETE" })
+    }
+
     const created: any[] = []
 
     for (let i = 0; i < valid.length; i++) {
@@ -354,16 +360,34 @@ export function ImportTasksModal({ projectId, onImported, onClose }: Props) {
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-200 flex gap-2 justify-end">
-          <Button variant="outline" onClick={onClose}>
-            {imported ? "Cerrar" : "Cancelar"}
-          </Button>
-          {!imported && validCount > 0 && (
-            <Button onClick={handleImport} disabled={loading}>
-              <Upload className="w-3.5 h-3.5 mr-1.5" />
-              {loading ? "Importando..." : `Importar ${validCount} actividades`}
-            </Button>
+        <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between gap-4">
+          {!imported && validCount > 0 ? (
+            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={replaceAll}
+                onChange={(e) => setReplaceAll(e.target.checked)}
+                className="rounded"
+              />
+              <span>
+                Reemplazar actividades existentes
+                {replaceAll && <span className="ml-1 text-red-500 font-medium">(borra las actuales)</span>}
+              </span>
+            </label>
+          ) : (
+            <span />
           )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>
+              {imported ? "Cerrar" : "Cancelar"}
+            </Button>
+            {!imported && validCount > 0 && (
+              <Button onClick={handleImport} disabled={loading}>
+                <Upload className="w-3.5 h-3.5 mr-1.5" />
+                {loading ? "Importando..." : `Importar ${validCount} actividades`}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>
