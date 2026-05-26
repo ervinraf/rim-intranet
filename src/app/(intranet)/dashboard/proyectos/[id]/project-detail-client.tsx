@@ -87,6 +87,8 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
   const [deletingTask, setDeletingTask] = useState<string | null>(null)
   const [editingActual, setEditingActual] = useState<string | null>(null)
   const [actualForm, setActualForm] = useState({ actualStartDate: "", actualEndDate: "" })
+  const [editingUpdate, setEditingUpdate] = useState<string | null>(null)
+  const [editUpdateText, setEditUpdateText] = useState("")
   const [editProjectModal, setEditProjectModal] = useState(false)
   const [editProjectForm, setEditProjectForm] = useState({
     name: initial.name,
@@ -217,6 +219,28 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
       const update = await res.json()
       setProject((p) => ({ ...p, updates: [update, ...p.updates] }))
       setNote("")
+    }
+  }
+
+  async function saveEditUpdate(updateId: string) {
+    if (!editUpdateText.trim()) return
+    const res = await fetch(`/api/projects/${project.id}/updates`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ updateId, note: editUpdateText }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setProject((p) => ({ ...p, updates: p.updates.map((u) => u.id === updateId ? updated : u) }))
+      setEditingUpdate(null)
+    }
+  }
+
+  async function deleteUpdate(updateId: string) {
+    if (!confirm("¿Eliminar esta nota?")) return
+    const res = await fetch(`/api/projects/${project.id}/updates?updateId=${updateId}`, { method: "DELETE" })
+    if (res.ok) {
+      setProject((p) => ({ ...p, updates: p.updates.filter((u) => u.id !== updateId) }))
     }
   }
 
@@ -679,11 +703,51 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
                   <p className="text-xs text-slate-400">Sin actualizaciones aun</p>
                 )}
                 {project.updates.map((u) => (
-                  <div key={u.id} className="border-l-2 border-amber-300 pl-3">
-                    <p className="text-sm text-slate-700">{u.note}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {format(new Date(u.createdAt), "d MMM yyyy, HH:mm", { locale: es })}
-                    </p>
+                  <div key={u.id} className="border-l-2 border-amber-300 pl-3 group">
+                    {editingUpdate === u.id ? (
+                      <div className="space-y-1.5">
+                        <Textarea
+                          value={editUpdateText}
+                          onChange={(e) => setEditUpdateText(e.target.value)}
+                          rows={2}
+                          className="text-sm"
+                          autoFocus
+                        />
+                        <div className="flex gap-1.5">
+                          <Button size="sm" className="h-6 text-xs px-2" onClick={() => saveEditUpdate(u.id)} disabled={!editUpdateText.trim()}>
+                            <Check className="w-3 h-3 mr-1" /> Guardar
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setEditingUpdate(null)}>
+                            <X className="w-3 h-3 mr-1" /> Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm text-slate-700 flex-1">{u.note}</p>
+                          {isAdmin && (
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                              <button
+                                className="p-0.5 rounded text-slate-400 hover:text-slate-600"
+                                onClick={() => { setEditingUpdate(u.id); setEditUpdateText(u.note) }}
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </button>
+                              <button
+                                className="p-0.5 rounded text-slate-400 hover:text-red-600"
+                                onClick={() => deleteUpdate(u.id)}
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {format(new Date(u.createdAt), "d MMM yyyy, HH:mm", { locale: es })}
+                        </p>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
