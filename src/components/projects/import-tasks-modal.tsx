@@ -102,6 +102,7 @@ export function ImportTasksModal({ projectId, onImported, onClose }: Props) {
   const [tasks, setTasks] = useState<ParsedTask[]>([])
   const [hasActual, setHasActual] = useState(false)
   const [replaceAll, setReplaceAll] = useState(false)
+  const [confirmText, setConfirmText] = useState("")
   const [loading, setLoading] = useState(false)
   const [imported, setImported] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -400,7 +401,7 @@ export function ImportTasksModal({ projectId, onImported, onClose }: Props) {
                 <input
                   type="checkbox"
                   checked={replaceAll}
-                  onChange={(e) => setReplaceAll(e.target.checked)}
+                  onChange={(e) => { setReplaceAll(e.target.checked); setConfirmText("") }}
                   className="rounded"
                 />
                 <span>
@@ -408,7 +409,21 @@ export function ImportTasksModal({ projectId, onImported, onClose }: Props) {
                   {replaceAll && <span className="ml-1 text-red-500 font-medium">(elimina las actuales)</span>}
                 </span>
               </label>
-              {!replaceAll && (
+              {replaceAll ? (
+                <div className="ml-5 mt-1.5 space-y-1">
+                  <p className="text-xs text-red-600 font-medium">
+                    Esta accion eliminara TODAS las actividades existentes del proyecto.
+                  </p>
+                  <p className="text-xs text-slate-500">Escribe <strong>BORRAR</strong> para confirmar:</p>
+                  <input
+                    type="text"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder="BORRAR"
+                    className="w-32 px-2 py-1 text-xs border border-red-300 rounded focus:outline-none focus:ring-1 focus:ring-red-400"
+                  />
+                </div>
+              ) : (
                 <p className="text-xs text-slate-400 ml-5">
                   Por defecto actualiza las existentes (mismo inicio) y agrega las nuevas
                 </p>
@@ -422,7 +437,7 @@ export function ImportTasksModal({ projectId, onImported, onClose }: Props) {
               {imported ? "Cerrar" : "Cancelar"}
             </Button>
             {!imported && validCount > 0 && (
-              <Button onClick={handleImport} disabled={loading}>
+              <Button onClick={handleImport} disabled={loading || (replaceAll && confirmText !== "BORRAR")}>
                 <Upload className="w-3.5 h-3.5 mr-1.5" />
                 {loading ? "Importando..." : `Importar ${validCount} actividades`}
               </Button>
