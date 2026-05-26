@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Plus, FileText, ChevronDown, ChevronUp, ClipboardList, Printer } from "lucide-react"
+import { Plus, FileText, ChevronDown, ChevronUp, ClipboardList, Printer, Camera } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -43,14 +43,38 @@ export function EquipmentTab({ equipment, departments, projects, isAdmin, search
   const [logData, setLogData] = useState({ type: "INSPECCION", description: "", projectId: "" })
   const [loading, setLoading] = useState(false)
 
-  const defaultSpecs = { capacidad: "", pesoBruto: "", dimensiones: "", potencia: "", voltaje: "", combustible: "", certificaciones: "", añoFabricacion: "", noEconomico: "", observaciones: "" }
+  const defaultSpecs = { capacidad: "", pesoBruto: "", dimensiones: "", potencia: "", voltaje: "", combustible: "", certificaciones: "", añoFabricacion: "", noEconomico: "", observaciones: "", photoUrl: "" }
   const [techData, setTechData] = useState<Record<string, string>>(defaultSpecs)
   const [purchaseDate, setPurchaseDate] = useState("")
   const [purchasePrice, setPurchasePrice] = useState("")
+  const [techError, setTechError] = useState<string | null>(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingPhoto(true)
+    setTechError(null)
+    const fd = new FormData()
+    fd.append("file", file)
+    fd.append("folder", "equipment")
+    const res = await fetch("/api/upload", { method: "POST", body: fd })
+    if (res.ok) {
+      const { url } = await res.json()
+      setTechData((p) => ({ ...p, photoUrl: url }))
+    } else {
+      const data = await res.json().catch(() => ({}))
+      setTechError(data.error ?? "Error al subir la foto")
+    }
+    setUploadingPhoto(false)
+    e.target.value = ""
+  }
 
   async function saveTech() {
     if (!techModal) return
     setLoading(true)
+    setTechError(null)
     const res = await fetch(`/api/equipment/${techModal.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -60,6 +84,9 @@ export function EquipmentTab({ equipment, departments, projects, isAdmin, search
       const updated = await res.json()
       onUpdate(equipment.map((e) => e.id === updated.id ? { ...e, ...updated } : e))
       setTechModal(null)
+    } else {
+      const data = await res.json().catch(() => ({}))
+      setTechError(data.error ?? "No se pudo guardar. Verifica tu permiso.")
     }
     setLoading(false)
   }
@@ -69,6 +96,7 @@ export function EquipmentTab({ equipment, departments, projects, isAdmin, search
     setTechData({ ...defaultSpecs, ...specs })
     setPurchaseDate(eq.purchaseDate ? new Date(eq.purchaseDate).toISOString().slice(0, 10) : "")
     setPurchasePrice(eq.purchasePrice ? String(eq.purchasePrice) : "")
+    setTechError(null)
     setTechModal(eq)
   }
 
@@ -275,10 +303,60 @@ export function EquipmentTab({ equipment, departments, projects, isAdmin, search
                   placeholder="Notas adicionales..."
                 />
               </div>
+              <div className="space-y-1 col-span-2">
+                <Label className="text-xs">Foto del equipo</Label>
+                {techData.photoUrl ? (
+                  <div className="relative">
+                    <img
+                      src={techData.photoUrl}
+                      alt="Foto del equipo"
+                      className="w-full max-h-40 object-contain rounded-lg border border-slate-200 bg-slate-50"
+                    />
+                    {isAdmin && (
+                      <button
+                        className="absolute top-1 right-1 text-xs bg-white border border-slate-200 rounded px-1.5 py-0.5 text-slate-500 hover:text-red-600"
+                        onClick={() => setTechData((p) => ({ ...p, photoUrl: "" }))}
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </div>
+                ) : isAdmin ? (
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      ref={photoInputRef}
+                      onChange={handlePhotoUpload}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploadingPhoto}
+                      onClick={() => photoInputRef.current?.click()}
+                      className="h-8 text-xs"
+                    >
+                      <Camera className="w-3.5 h-3.5 mr-1.5" />
+                      {uploadingPhoto ? "Subiendo..." : "Subir foto"}
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400">Sin foto</p>
+                )}
+              </div>
             </div>
+            {techError && (
+              <div className="mx-6 mb-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+                {techError}
+              </div>
+            )}
             <div className="flex gap-2 px-6 py-4 border-t border-slate-200">
               <Button variant="outline" onClick={() => setTechModal(null)} className="flex-1">Cancelar</Button>
-              <Button onClick={saveTech} disabled={loading} className="flex-1">Guardar hoja tecnica</Button>
+              {isAdmin && (
+                <Button onClick={saveTech} disabled={loading || uploadingPhoto} className="flex-1">Guardar hoja tecnica</Button>
+              )}
             </div>
           </div>
         </div>

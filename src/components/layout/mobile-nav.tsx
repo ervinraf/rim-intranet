@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard, Users, Clock, FolderOpen,
   Wrench, HardHat, LogOut, GanttChartSquare, Settings,
-  Menu, X, Receipt, CalendarDays, ClipboardList, UserCheck, UserPlus, Palmtree, Star,
+  Menu, X, Receipt, CalendarDays, ClipboardList, UserCheck, UserPlus, Palmtree, Star, BarChart3,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -51,6 +51,7 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
         title: "General",
         items: [
           { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { label: "Ejecutivo", href: "/dashboard/ejecutivo", icon: BarChart3 },
           { label: "Usuarios", href: "/dashboard/usuarios", icon: Users },
         ],
       },
@@ -84,6 +85,7 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
         title: "General",
         items: [
           { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+          { label: "Ejecutivo", href: "/dashboard/ejecutivo", icon: BarChart3 },
           { label: "Usuarios", href: "/dashboard/usuarios", icon: Users },
         ],
       },

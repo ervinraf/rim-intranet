@@ -448,12 +448,32 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
               <p className="text-slate-400 text-sm">Sin actividades. Agrega la primera.</p>
             </div>
           ) : (
-            <GanttChart
-              tasks={tasks}
-              projectStart={project.startDate}
-              projectEnd={project.endDate}
-              readOnly={true}
-            />
+            <>
+              <GanttChart
+                tasks={tasks}
+                projectStart={project.startDate}
+                projectEnd={project.endDate}
+                onProgressChange={isAdmin ? handleProgressChange : undefined}
+                readOnly={!isAdmin}
+              />
+              {isAdmin && (
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-slate-500"
+                    onClick={resetAllProgress}
+                    disabled={saving}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                    Resetear
+                  </Button>
+                  <Button size="sm" onClick={saveProgress} disabled={saving}>
+                    {saving ? "Guardando..." : "Guardar avances"}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
 
           {/* Fotos por actividad */}
