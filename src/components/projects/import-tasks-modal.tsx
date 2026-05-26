@@ -18,7 +18,7 @@ interface ParsedTask {
 
 interface Props {
   projectId: string
-  onImported: (tasks: any[]) => void
+  onImported: (tasks: any[], replaced: boolean) => void
   onClose: () => void
 }
 
@@ -228,7 +228,7 @@ export function ImportTasksModal({ projectId, onImported, onClose }: Props) {
         })
         if (res.ok) created.push(await res.json())
       }
-      onImported(created)
+      onImported(created, true)
     } else {
       // Merge inteligente: si coincide fecha de inicio, actualiza; si no, agrega
       const existing: any[] = await fetch(`/api/projects/${projectId}/tasks`).then((r) => r.json())
@@ -265,7 +265,7 @@ export function ImportTasksModal({ projectId, onImported, onClose }: Props) {
           if (res.ok) created.push(await res.json())
         }
       }
-      onImported(created)
+      onImported(created, false)
     }
 
     setImported(true)

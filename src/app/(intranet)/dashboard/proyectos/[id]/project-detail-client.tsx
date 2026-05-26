@@ -913,12 +913,29 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
       <ImportTasksModal
         projectId={project.id}
         onClose={() => setShowImportModal(false)}
-        onImported={(created) => {
+        onImported={(created, replaced) => {
           const newTasks = created.map((t: any) => ({ ...t, photos: [] }))
-          setTasks((prev) => [...prev, ...newTasks])
-          const allTasks = [...tasks, ...newTasks]
-          const avg = allTasks.length
-            ? Math.round(allTasks.reduce((s: number, t: any) => s + t.progress, 0) / allTasks.length)
+          setTasks((prev) => {
+            if (replaced) return newTasks
+            // Merge: actualiza existentes, agrega los nuevos
+            const createdIds = new Set(created.map((t: any) => t.id))
+            const updated = prev.map((t) => {
+              const match = created.find((c: any) => c.id === t.id)
+              return match ? { ...t, ...match, photos: t.photos } : t
+            })
+            const brandNew = newTasks.filter((t) => !prev.some((p) => p.id === t.id))
+            return [...updated, ...brandNew]
+          })
+          const base = replaced ? newTasks : (() => {
+            const updated = tasks.map((t) => {
+              const match = created.find((c: any) => c.id === t.id)
+              return match ? { ...t, ...match } : t
+            })
+            const brandNew = newTasks.filter((t) => !tasks.some((p) => p.id === t.id))
+            return [...updated, ...brandNew]
+          })()
+          const avg = base.length
+            ? Math.round(base.reduce((s: number, t: any) => s + (t.progress ?? 0), 0) / base.length)
             : 0
           setProject((p) => ({ ...p, progress: avg }))
         }}
