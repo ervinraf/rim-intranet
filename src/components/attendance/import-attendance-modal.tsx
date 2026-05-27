@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Download, Upload, X, Check, AlertCircle, FileSpreadsheet, ChevronRight } from "lucide-react"
+import { Download, Upload, X, Check, AlertCircle, FileSpreadsheet } from "lucide-react"
 import * as XLSX from "xlsx"
 
 interface ParsedRow {
@@ -15,17 +15,6 @@ interface ParsedRow {
   valid: boolean
   error?: string
 }
-
-interface SheetInfo {
-  name: string
-  rows: ParsedRow[]
-  existing: number
-  notFound: number
-  total: number
-  checked: boolean
-}
-
-type Step = "upload" | "select" | "preview" | "done"
 
 interface Props {
   onImported: (result: { created: number; updated: number; errors: string[] }) => void
@@ -61,6 +50,7 @@ function parseDate(val: any): string | null {
 
 function parseTime(val: any): string {
   if (!val && val !== 0) return ""
+  // Excel stores times as fractions of a day
   if (typeof val === "number" && val < 1) {
     const totalMinutes = Math.round(val * 24 * 60)
     const h = Math.floor(totalMinutes / 60)
@@ -70,55 +60,6 @@ function parseTime(val: any): string {
   const str = String(val).trim()
   if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(str)) return str.slice(0, 5)
   return str
-}
-
-function parseSheet(ws: XLSX.WorkSheet): ParsedRow[] {
-  const raw: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" })
-
-  let headerIdx = 0
-  for (let i = 0; i < Math.min(raw.length, 10); i++) {
-    const row = raw[i].map((c: any) => String(c).toLowerCase())
-    if (row.some((c) => c.includes("empleado") || c.includes("nombre"))) {
-      headerIdx = i
-      break
-    }
-  }
-
-  const header = raw[headerIdx].map((c: any) => String(c).toLowerCase())
-  const col = (kw: string[]) => header.findIndex((h) => kw.some((k) => h.includes(k)))
-
-  const empIdx = col(["empleado", "nombre", "num"])
-  const dateIdx = col(["fecha", "date"])
-  const inIdx = col(["entrada", "checkin", "check_in", "inicio", "ingreso"])
-  const outIdx = col(["salida", "checkout", "check_out", "fin", "egreso"])
-  const typeIdx = col(["tipo", "type"])
-  const notesIdx = col(["nota", "observ", "comment"])
-
-  if (empIdx === -1 || dateIdx === -1) return []
-
-  const parsed: ParsedRow[] = []
-  for (let i = headerIdx + 1; i < raw.length; i++) {
-    const row = raw[i]
-    const employee = String(row[empIdx] ?? "").trim()
-    if (!employee) continue
-
-    const date = parseDate(dateIdx >= 0 ? row[dateIdx] : null)
-    if (!date) {
-      parsed.push({ employee, date: "", checkIn: "", checkOut: "", type: "", notes: "", valid: false, error: "Fecha invalida" })
-      continue
-    }
-
-    parsed.push({
-      employee,
-      date,
-      checkIn: parseTime(inIdx >= 0 ? row[inIdx] : null),
-      checkOut: parseTime(outIdx >= 0 ? row[outIdx] : null),
-      type: typeIdx >= 0 ? String(row[typeIdx] ?? "").trim().toUpperCase() || "NORMAL" : "NORMAL",
-      notes: notesIdx >= 0 ? String(row[notesIdx] ?? "").trim() : "",
-      valid: true,
-    })
-  }
-  return parsed
 }
 
 export function downloadAttendanceTemplate() {
@@ -154,6 +95,18 @@ export function downloadAttendanceTemplate() {
     ["Salida", "Hora de salida HH:MM en 24 horas", "NO", "17:30"],
     ["Tipo", "NORMAL / TARDANZA / FALTA / VACACIONES / PERMISO / INCAPACIDAD", "NO", "NORMAL"],
     ["Notas", "Observaciones opcionales", "NO", "Permiso medico"],
+    [""],
+    ["TIPOS DE ASISTENCIA:"],
+    ["NORMAL", "Asistencia completa y a tiempo"],
+    ["TARDANZA", "Llego tarde"],
+    ["FALTA", "No se presento"],
+    ["VACACIONES", "Dia de vacaciones autorizado"],
+    ["PERMISO", "Permiso autorizado"],
+    ["INCAPACIDAD", "Baja medica o incapacidad"],
+    [""],
+    ["NOTAS:"],
+    ["", "Si un empleado ya tiene registro en esa fecha, se sobreescribe con los datos del archivo."],
+    ["", "El nombre del empleado debe coincidir con el nombre en el sistema (puede ser parcial)."],
   ])
   inst["!cols"] = [{ wch: 16 }, { wch: 65 }, { wch: 12 }, { wch: 28 }]
 
@@ -163,122 +116,99 @@ export function downloadAttendanceTemplate() {
   XLSX.writeFile(wb, "plantilla_asistencia.xlsx")
 }
 
-function SheetStatusBadge({ sheet }: { sheet: SheetInfo }) {
-  const validRows = sheet.rows.filter((r) => r.valid)
-  if (validRows.length === 0) {
-    return <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Sin datos</span>
-  }
-  if (sheet.existing === 0) {
-    return <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-medium">Nuevo</span>
-  }
-  if (sheet.existing >= validRows.length) {
-    return <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">Ya importado</span>
-  }
-  return <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Parcial</span>
-}
-
 export function ImportAttendanceModal({ onImported, onClose }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [step, setStep] = useState<Step>("upload")
-  const [sheets, setSheets] = useState<SheetInfo[]>([])
-  const [checking, setChecking] = useState(false)
+  const [rows, setRows] = useState<ParsedRow[]>([])
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ created: number; updated: number; errors: string[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     setError(null)
 
     const reader = new FileReader()
-    reader.onload = async (ev) => {
+    reader.onload = (ev) => {
       try {
         const data = new Uint8Array(ev.target?.result as ArrayBuffer)
         const wb = XLSX.read(data, { type: "array", cellDates: false })
+        const ws = wb.Sheets[wb.SheetNames[0]]
+        const raw: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" })
 
-        // Skip sheets that look like instructions
-        const dataSheets = wb.SheetNames.filter((name) =>
-          !["instrucciones", "instruccion", "instructions", "info", "ayuda"].includes(name.toLowerCase())
-        )
+        let headerIdx = 0
+        for (let i = 0; i < Math.min(raw.length, 10); i++) {
+          const row = raw[i].map((c: any) => String(c).toLowerCase())
+          if (row.some((c) => c.includes("empleado") || c.includes("nombre"))) {
+            headerIdx = i
+            break
+          }
+        }
 
-        if (dataSheets.length === 0) {
-          setError("No se encontraron hojas de datos en el archivo.")
+        const header = raw[headerIdx].map((c: any) => String(c).toLowerCase())
+        const col = (kw: string[]) => header.findIndex((h) => kw.some((k) => h.includes(k)))
+
+        const empIdx = col(["empleado", "nombre", "num"])
+        const dateIdx = col(["fecha", "date"])
+        const inIdx = col(["entrada", "checkin", "check_in", "inicio", "ingreso"])
+        const outIdx = col(["salida", "checkout", "check_out", "fin", "egreso"])
+        const typeIdx = col(["tipo", "type"])
+        const notesIdx = col(["nota", "observ", "comment"])
+
+        if (empIdx === -1 || dateIdx === -1) {
+          setError("No se encontraron columnas 'Empleado' y 'Fecha'. Revisa el archivo.")
           return
         }
 
-        const parsed: SheetInfo[] = dataSheets.map((name) => ({
-          name,
-          rows: parseSheet(wb.Sheets[name]),
-          existing: 0,
-          notFound: 0,
-          total: 0,
-          checked: false,
-        }))
+        const parsed: ParsedRow[] = []
+        for (let i = headerIdx + 1; i < raw.length; i++) {
+          const row = raw[i]
+          const employee = String(row[empIdx] ?? "").trim()
+          if (!employee) continue
 
-        const withData = parsed.filter((s) => s.rows.some((r) => r.valid))
-        if (withData.length === 0) {
-          setError("No se encontraron registros validos en el archivo. Revisa las columnas 'Empleado' y 'Fecha'.")
-          return
-        }
+          const date = parseDate(dateIdx >= 0 ? row[dateIdx] : null)
+          if (!date) {
+            parsed.push({ employee, date: "", checkIn: "", checkOut: "", type: "", notes: "", valid: false, error: "Fecha invalida" })
+            continue
+          }
 
-        setChecking(true)
-        setSheets(withData)
-
-        // Check each sheet against DB
-        const checked = await Promise.all(
-          withData.map(async (sheet) => {
-            const validRows = sheet.rows.filter((r) => r.valid)
-            const res = await fetch("/api/attendance/check", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ records: validRows.map((r) => ({ employee: r.employee, date: r.date })) }),
-            })
-            const data = await res.json()
-            const isNew = data.existing === 0
-            const isPartial = data.existing > 0 && data.existing < validRows.length
-            return {
-              ...sheet,
-              existing: data.existing ?? 0,
-              notFound: data.notFound ?? 0,
-              total: validRows.length,
-              checked: isNew || isPartial,
-            }
+          parsed.push({
+            employee,
+            date,
+            checkIn: parseTime(inIdx >= 0 ? row[inIdx] : null),
+            checkOut: parseTime(outIdx >= 0 ? row[outIdx] : null),
+            type: typeIdx >= 0 ? String(row[typeIdx] ?? "").trim().toUpperCase() || "NORMAL" : "NORMAL",
+            notes: notesIdx >= 0 ? String(row[notesIdx] ?? "").trim() : "",
+            valid: true,
           })
-        )
+        }
 
-        setSheets(checked)
-        setChecking(false)
-        setStep("select")
+        if (parsed.length === 0) {
+          setError("No se encontraron registros en el archivo.")
+          return
+        }
+        setRows(parsed)
       } catch {
         setError("Error al leer el archivo. Asegurate de que sea un .xlsx valido.")
-        setChecking(false)
       }
     }
     reader.readAsArrayBuffer(file)
     e.target.value = ""
   }
 
-  function toggleSheet(name: string) {
-    setSheets((prev) => prev.map((s) => s.name === name ? { ...s, checked: !s.checked } : s))
-  }
-
-  const selectedSheets = sheets.filter((s) => s.checked)
-  const allSelectedRows = selectedSheets.flatMap((s) => s.rows.filter((r) => r.valid))
-
   async function handleImport() {
-    if (!allSelectedRows.length) return
+    const valid = rows.filter((r) => r.valid)
+    if (!valid.length) return
     setLoading(true)
     try {
       const res = await fetch("/api/attendance/bulk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ records: allSelectedRows }),
+        body: JSON.stringify({ records: valid }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Error al importar")
       setResult(data)
-      setStep("done")
       onImported(data)
     } catch (err: any) {
       setError(err.message)
@@ -287,22 +217,16 @@ export function ImportAttendanceModal({ onImported, onClose }: Props) {
     }
   }
 
+  const validCount = rows.filter((r) => r.valid).length
+  const invalidCount = rows.filter((r) => !r.valid).length
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-3xl shadow-xl">
-
-        {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-slate-900">Importar asistencia desde Excel</h2>
-            {step === "select" && (
-              <p className="text-xs text-slate-500 mt-0.5">
-                Selecciona los lotes que quieres importar
-              </p>
-            )}
-            {step === "upload" && (
-              <p className="text-xs text-slate-500 mt-0.5">Carga registros de asistencia en lote</p>
-            )}
+            <p className="text-xs text-slate-500 mt-0.5">Carga registros de asistencia en lote</p>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
@@ -310,9 +234,7 @@ export function ImportAttendanceModal({ onImported, onClose }: Props) {
         </div>
 
         <div className="px-6 py-4 space-y-4">
-
-          {/* STEP: upload */}
-          {step === "upload" && (
+          {!result ? (
             <>
               <div className="bg-slate-50 rounded-xl p-4 flex items-center justify-between">
                 <div>
@@ -330,17 +252,12 @@ export function ImportAttendanceModal({ onImported, onClose }: Props) {
               <div>
                 <p className="text-sm font-medium text-slate-700 mb-1">Paso 2 — Sube tu archivo</p>
                 <p className="text-xs text-slate-500 mb-2">
-                  Si el archivo tiene varias hojas (lotes), podras elegir cuales importar.
+                  Si ya existe registro para ese empleado y fecha, se actualiza automaticamente.
                 </p>
                 <input type="file" accept=".xlsx,.xls" className="hidden" ref={fileInputRef} onChange={handleFile} />
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={checking}
-                >
+                <Button variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
                   <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  {checking ? "Analizando lotes..." : "Seleccionar archivo Excel"}
+                  Seleccionar archivo Excel
                 </Button>
               </div>
 
@@ -350,75 +267,48 @@ export function ImportAttendanceModal({ onImported, onClose }: Props) {
                   {error}
                 </div>
               )}
-            </>
-          )}
 
-          {/* STEP: select sheets */}
-          {step === "select" && (
-            <>
-              <div className="space-y-2">
-                {sheets.map((sheet) => {
-                  const hasData = sheet.rows.some((r) => r.valid)
-                  const isAllImported = hasData && sheet.existing >= sheet.total
-                  return (
-                    <label
-                      key={sheet.name}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors ${
-                        sheet.checked
-                          ? "border-slate-900 bg-slate-50"
-                          : "border-slate-200 hover:border-slate-300"
-                      } ${!hasData || isAllImported ? "opacity-60" : ""}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={sheet.checked}
-                        disabled={!hasData}
-                        onChange={() => toggleSheet(sheet.name)}
-                        className="rounded"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-900 truncate">{sheet.name}</p>
-                        {hasData ? (
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            {sheet.total} registros
-                            {sheet.existing > 0 && (
-                              <span className="ml-1 text-amber-600">
-                                · {sheet.existing} ya en el sistema
-                              </span>
-                            )}
-                            {sheet.notFound > 0 && (
-                              <span className="ml-1 text-red-500">
-                                · {sheet.notFound} empleado(s) no encontrado(s)
-                              </span>
-                            )}
-                          </p>
-                        ) : (
-                          <p className="text-xs text-slate-400 mt-0.5">Sin registros validos</p>
-                        )}
-                      </div>
-                      <SheetStatusBadge sheet={sheet} />
-                    </label>
-                  )
-                })}
-              </div>
-
-              {error && (
-                <div className="flex items-start gap-2 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
-                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  {error}
-                </div>
-              )}
-
-              {selectedSheets.length > 0 && (
-                <div className="bg-slate-50 rounded-lg px-4 py-2 text-sm text-slate-600">
-                  {selectedSheets.length} lote(s) seleccionado(s) · {allSelectedRows.length} registros totales
+              {rows.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-slate-700">
+                      Vista previa — {validCount} registros
+                      {invalidCount > 0 && <span className="text-red-500 ml-1">({invalidCount} con error)</span>}
+                    </p>
+                    <button className="text-xs text-slate-400 hover:text-slate-600" onClick={() => setRows([])}>
+                      Limpiar
+                    </button>
+                  </div>
+                  <div className="border border-slate-200 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-50 sticky top-0">
+                        <tr>
+                          <th className="text-left px-3 py-2 text-slate-500 font-medium">Empleado</th>
+                          <th className="text-left px-3 py-2 text-slate-500 font-medium">Fecha</th>
+                          <th className="text-left px-3 py-2 text-slate-500 font-medium">Entrada</th>
+                          <th className="text-left px-3 py-2 text-slate-500 font-medium">Salida</th>
+                          <th className="text-left px-3 py-2 text-slate-500 font-medium">Tipo</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {rows.map((r, i) => (
+                          <tr key={i} className={r.valid ? "" : "bg-red-50"}>
+                            <td className="px-3 py-1.5 text-slate-700 max-w-[160px] truncate">{r.employee}</td>
+                            <td className="px-3 py-1.5 text-slate-500">
+                              {r.date || <span className="text-red-500">{r.error}</span>}
+                            </td>
+                            <td className="px-3 py-1.5 text-slate-500">{r.checkIn || "—"}</td>
+                            <td className="px-3 py-1.5 text-slate-500">{r.checkOut || "—"}</td>
+                            <td className="px-3 py-1.5 text-slate-500">{TYPE_LABELS[r.type] ?? (r.type || "Normal")}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </>
-          )}
-
-          {/* STEP: done */}
-          {step === "done" && result && (
+          ) : (
             <div className="py-8 text-center space-y-2">
               <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Check className="w-6 h-6 text-emerald-600" />
@@ -439,31 +329,16 @@ export function ImportAttendanceModal({ onImported, onClose }: Props) {
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-200 flex gap-2 justify-between items-center">
-          <div>
-            {step === "select" && (
-              <button
-                className="text-sm text-slate-400 hover:text-slate-600"
-                onClick={() => { setStep("upload"); setSheets([]); setError(null) }}
-              >
-                Subir otro archivo
-              </button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>
-              {step === "done" ? "Cerrar" : "Cancelar"}
+        <div className="px-6 py-4 border-t border-slate-200 flex gap-2 justify-end">
+          <Button variant="outline" onClick={onClose}>
+            {result ? "Cerrar" : "Cancelar"}
+          </Button>
+          {!result && validCount > 0 && (
+            <Button onClick={handleImport} disabled={loading}>
+              <Upload className="w-3.5 h-3.5 mr-1.5" />
+              {loading ? "Importando..." : `Importar ${validCount} registros`}
             </Button>
-            {step === "select" && (
-              <Button onClick={handleImport} disabled={loading || selectedSheets.length === 0}>
-                <Upload className="w-3.5 h-3.5 mr-1.5" />
-                {loading
-                  ? "Importando..."
-                  : `Importar ${allSelectedRows.length} registro${allSelectedRows.length !== 1 ? "s" : ""}`}
-              </Button>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>

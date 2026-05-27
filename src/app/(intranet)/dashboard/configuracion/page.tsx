@@ -35,7 +35,6 @@ export default async function ConfiguracionPage() {
       departments={JSON.parse(JSON.stringify(departments))}
       roles={JSON.parse(JSON.stringify(roles))}
       empresa={empresaMap}
-      isSuperAdmin={session.user.role === "SUPERADMIN"}
     />
   )
 }

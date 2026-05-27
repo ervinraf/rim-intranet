@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Upload, CheckCircle, Building2, Clock, Plus, Pencil, Trash2, X, Globe, DatabaseBackup } from "lucide-react"
+import { Upload, CheckCircle, Building2, Clock, Plus, Pencil, Trash2, X, Globe } from "lucide-react"
 
 interface Department {
   id: string
@@ -28,14 +28,12 @@ interface Props {
   departments: Department[]
   roles: Role[]
   empresa: Record<string, string>
-  isSuperAdmin: boolean
 }
 
-type Tab = "general" | "departamentos" | "roles" | "empresa" | "respaldo"
+type Tab = "general" | "departamentos" | "roles" | "empresa"
 
-export function ConfigClient({ config, departments: initialDepts, roles: initialRoles, empresa: initialEmpresa, isSuperAdmin }: Props) {
+export function ConfigClient({ config, departments: initialDepts, roles: initialRoles, empresa: initialEmpresa }: Props) {
   const [tab, setTab] = useState<Tab>("general")
-  const [backupLoading, setBackupLoading] = useState(false)
   const [logoUrl, setLogoUrl] = useState<string | null>(config.company_logo ?? null)
   const [companyName, setCompanyName] = useState(config.company_name ?? "RIM Rigging")
   const [expirationMonths, setExpirationMonths] = useState(config.hours_bank_expiration_months ?? "6")
@@ -74,22 +72,6 @@ export function ConfigClient({ config, departments: initialDepts, roles: initial
   const [deptLoading, setDeptLoading] = useState(false)
   const [deptError, setDeptError] = useState("")
   const [showDeptForm, setShowDeptForm] = useState(false)
-
-  async function downloadBackup() {
-    setBackupLoading(true)
-    const res = await fetch("/api/backup")
-    if (res.ok) {
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      const date = new Date().toISOString().slice(0, 10)
-      a.href = url
-      a.download = `rim_intranet_backup_${date}.sql`
-      a.click()
-      URL.revokeObjectURL(url)
-    }
-    setBackupLoading(false)
-  }
 
   async function uploadLogo(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -236,7 +218,6 @@ export function ConfigClient({ config, departments: initialDepts, roles: initial
           { id: "empresa", label: "Empresa" },
           { id: "departamentos", label: "Departamentos" },
           { id: "roles", label: "Roles" },
-          ...(isSuperAdmin ? [{ id: "respaldo", label: "Respaldo" }] : []),
         ] as { id: Tab; label: string }[]).map((t) => (
           <button
             key={t.id}
@@ -480,33 +461,6 @@ export function ConfigClient({ config, departments: initialDepts, roles: initial
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {tab === "respaldo" && isSuperAdmin && (
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
-                <DatabaseBackup className="w-4 h-4" />
-                Respaldo de base de datos
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-sm text-slate-600">
-                Genera y descarga un respaldo completo de todos los datos del sistema en formato SQL.
-                El archivo puede usarse para restaurar la base de datos en caso de perdida de informacion.
-              </p>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
-                El archivo incluye empleados, proyectos, asistencia, horas, documentos y toda la informacion del sistema.
-                Guardalo en un lugar seguro.
-              </div>
-              <Button onClick={downloadBackup} disabled={backupLoading}>
-                <DatabaseBackup className="w-4 h-4 mr-2" />
-                {backupLoading ? "Generando respaldo..." : "Descargar respaldo SQL"}
-              </Button>
-            </CardContent>
-          </Card>
         </div>
       )}
 
