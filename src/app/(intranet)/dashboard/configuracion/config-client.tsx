@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Upload, CheckCircle, Building2, Clock, Plus, Pencil, Trash2, X, Globe, DatabaseBackup, Loader2 } from "lucide-react"
+import { Upload, CheckCircle, Building2, Clock, Plus, Pencil, Trash2, X, Globe, DatabaseBackup, Loader2, Download, AlertTriangle, RotateCcw } from "lucide-react"
 
 interface Department {
   id: string
@@ -37,6 +37,16 @@ export function ConfigClient({ config, departments: initialDepts, roles: initial
   const [tab, setTab] = useState<Tab>("general")
   const [backupLoading, setBackupLoading] = useState(false)
   const [backupMsg, setBackupMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [downloadLoading, setDownloadLoading] = useState(false)
+  const [restoreLoading, setRestoreLoading] = useState(false)
+  const [restoreConfirm, setRestoreConfirm] = useState("")
+  const [restoreFile, setRestoreFile] = useState<File | null>(null)
+  const [showRestorePanel, setShowRestorePanel] = useState(false)
+  const restoreFileRef = useRef<HTMLInputElement>(null)
+  const [backupPassword, setBackupPassword] = useState("")
+  const [backupUnlocked, setBackupUnlocked] = useState(false)
+  const [backupPasswordError, setBackupPasswordError] = useState("")
+  const [backupPasswordLoading, setBackupPasswordLoading] = useState(false)
 
   async function triggerBackup() {
     setBackupLoading(true)
@@ -50,6 +60,80 @@ export function ConfigClient({ config, departments: initialDepts, roles: initial
     }
     setBackupLoading(false)
     setTimeout(() => setBackupMsg(null), 6000)
+  }
+
+  async function verifyBackupPassword(e: React.FormEvent) {
+    e.preventDefault()
+    setBackupPasswordLoading(true)
+    setBackupPasswordError("")
+    const res = await fetch("/api/backup/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: backupPassword }),
+    })
+    if (res.ok) {
+      setBackupUnlocked(true)
+    } else {
+      setBackupPasswordError("Contrasena incorrecta")
+    }
+    setBackupPasswordLoading(false)
+  }
+
+  async function downloadBackup() {
+    setDownloadLoading(true)
+    setBackupMsg(null)
+    try {
+      const res = await fetch(`/api/backup/download?pwd=${encodeURIComponent(backupPassword)}`)
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setBackupMsg({ ok: false, text: data.error ?? "Error al descargar" })
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      const date = new Date().toISOString().split("T")[0]
+      a.href = url
+      a.download = `backup-rim-${date}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      setBackupMsg({ ok: true, text: "Respaldo descargado correctamente." })
+      setTimeout(() => setBackupMsg(null), 5000)
+    } catch {
+      setBackupMsg({ ok: false, text: "Error de red al descargar" })
+    } finally {
+      setDownloadLoading(false)
+    }
+  }
+
+  async function restoreBackup() {
+    if (!restoreFile || restoreConfirm !== "RESTAURAR") return
+    setRestoreLoading(true)
+    setBackupMsg(null)
+    try {
+      const text = await restoreFile.text()
+      const res = await fetch("/api/backup/restore", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Backup-Password": backupPassword,
+        },
+        body: text,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setBackupMsg({ ok: true, text: "Base de datos restaurada correctamente." })
+        setShowRestorePanel(false)
+        setRestoreFile(null)
+        setRestoreConfirm("")
+      } else {
+        setBackupMsg({ ok: false, text: data.error ?? "Error durante la restauracion" })
+      }
+    } catch {
+      setBackupMsg({ ok: false, text: "Error de red durante la restauracion" })
+    } finally {
+      setRestoreLoading(false)
+    }
   }
   const [logoUrl, setLogoUrl] = useState<string | null>(config.company_logo ?? null)
   const [companyName, setCompanyName] = useState(config.company_name ?? "RIM Rigging")
@@ -484,50 +568,207 @@ export function ConfigClient({ config, departments: initialDepts, roles: initial
 
       {tab === "respaldo" && isSuperAdmin && (
         <div className="space-y-4">
+          {/* Password gate */}
+          {!backupUnlocked ? (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
+                  <DatabaseBackup className="w-4 h-4" />
+                  Acceso a respaldos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={verifyBackupPassword} className="space-y-3 max-w-xs">
+                  <div className="space-y-1.5">
+                    <Label>Contrasena de respaldo</Label>
+                    <input
+                      type="password"
+                      value={backupPassword}
+                      onChange={(e) => { setBackupPassword(e.target.value); setBackupPasswordError("") }}
+                      placeholder="••••••••••"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                      autoComplete="current-password"
+                    />
+                    {backupPasswordError && (
+                      <p className="text-xs text-red-600">{backupPasswordError}</p>
+                    )}
+                  </div>
+                  <Button type="submit" size="sm" disabled={backupPasswordLoading || !backupPassword}>
+                    {backupPasswordLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Acceder"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          ) : (
+          <div className="space-y-4">
+          {/* Descarga directa */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
-                <DatabaseBackup className="w-4 h-4" />
-                Respaldo de base de datos
+                <Download className="w-4 h-4" />
+                Descargar respaldo
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-slate-500">
-                Dispara un respaldo inmediato via GitHub Actions. El archivo .sql quedara guardado como artifact por 90 dias.
+                Exporta todos los datos actuales de la base de datos a un archivo JSON que puedes guardar localmente.
               </p>
-              <div className="flex items-center gap-3">
-                <Button onClick={triggerBackup} disabled={backupLoading}>
-                  {backupLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                      Iniciando...
-                    </>
-                  ) : (
-                    <>
-                      <DatabaseBackup className="w-4 h-4 mr-1.5" />
-                      Hacer respaldo ahora
-                    </>
-                  )}
-                </Button>
-                <a
-                  href="https://github.com/ervinraf/rim-intranet/actions/workflows/db-backup.yml"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:underline"
-                >
-                  Ver respaldos en GitHub
-                </a>
-              </div>
-              {backupMsg && (
-                <p className={`text-sm px-3 py-2 rounded-lg ${backupMsg.ok ? "bg-green-50 text-green-700 border border-green-100" : "bg-red-50 text-red-700 border border-red-100"}`}>
-                  {backupMsg.text}
-                </p>
-              )}
+              <Button onClick={downloadBackup} disabled={downloadLoading} variant="outline">
+                {downloadLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                    Exportando...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-1.5" />
+                    Descargar respaldo ahora
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Respaldo automatico */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
+                <DatabaseBackup className="w-4 h-4" />
+                Respaldo SQL automatico
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-slate-500">
+                Dispara un respaldo SQL inmediato. El archivo .sql queda guardado como artifact por 90 dias.
+              </p>
+              <Button onClick={triggerBackup} disabled={backupLoading} variant="outline">
+                {backupLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                    Iniciando...
+                  </>
+                ) : (
+                  <>
+                    <DatabaseBackup className="w-4 h-4 mr-1.5" />
+                    Disparar respaldo SQL
+                  </>
+                )}
+              </Button>
               <p className="text-xs text-slate-400">
                 El respaldo automatico corre todos los dias a las 11:59pm hora de Mexico.
               </p>
             </CardContent>
           </Card>
+
+          {/* Restaurar */}
+          <Card className="border-red-100">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-red-600 flex items-center gap-2">
+                <RotateCcw className="w-4 h-4" />
+                Restaurar base de datos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700">
+                  Esta operacion <strong>borra todos los datos actuales</strong> y los reemplaza con el contenido del archivo de respaldo. Es irreversible. Asegurate de tener un respaldo reciente antes de continuar.
+                </p>
+              </div>
+
+              {!showRestorePanel ? (
+                <Button
+                  variant="outline"
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => setShowRestorePanel(true)}
+                >
+                  <RotateCcw className="w-4 h-4 mr-1.5" />
+                  Restaurar desde archivo...
+                </Button>
+              ) : (
+                <div className="space-y-3 border border-red-100 rounded-xl p-4 bg-red-50/30">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Archivo de respaldo (.json)</Label>
+                    <input
+                      ref={restoreFileRef}
+                      type="file"
+                      accept=".json,application/json"
+                      className="hidden"
+                      onChange={(e) => setRestoreFile(e.target.files?.[0] ?? null)}
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => restoreFileRef.current?.click()}
+                      >
+                        <Upload className="w-3.5 h-3.5 mr-1.5" />
+                        Seleccionar archivo
+                      </Button>
+                      {restoreFile && (
+                        <span className="text-xs text-slate-600 truncate max-w-48">{restoreFile.name}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">
+                      Escribe <strong>RESTAURAR</strong> para confirmar
+                    </Label>
+                    <input
+                      type="text"
+                      value={restoreConfirm}
+                      onChange={(e) => setRestoreConfirm(e.target.value)}
+                      placeholder="RESTAURAR"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={restoreBackup}
+                      disabled={restoreLoading || !restoreFile || restoreConfirm !== "RESTAURAR"}
+                      className="bg-red-600 hover:bg-red-700 text-white"
+                      size="sm"
+                    >
+                      {restoreLoading ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          Restaurando...
+                        </>
+                      ) : (
+                        <>
+                          <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+                          Restaurar ahora
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowRestorePanel(false)
+                        setRestoreFile(null)
+                        setRestoreConfirm("")
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {backupMsg && (
+            <p className={`text-sm px-3 py-2 rounded-lg ${backupMsg.ok ? "bg-green-50 text-green-700 border border-green-100" : "bg-red-50 text-red-700 border border-red-100"}`}>
+              {backupMsg.text}
+            </p>
+          )}
+          </div>
+          )}
         </div>
       )}
 
