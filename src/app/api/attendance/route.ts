@@ -83,6 +83,14 @@ export async function POST(req: NextRequest) {
 
   let record
   try {
+    // checkIn/checkOut can be "HH:mm" (from time input) or a full ISO string
+    const toDatetime = (timeOrIso: string) => {
+      if (/^\d{2}:\d{2}(:\d{2})?$/.test(timeOrIso)) {
+        return new Date(`${date}T${timeOrIso.length === 5 ? timeOrIso + ":00" : timeOrIso}`)
+      }
+      return new Date(timeOrIso)
+    }
+
     record = await prisma.attendance.upsert({
       where: {
         employeeId_date: {
@@ -91,8 +99,8 @@ export async function POST(req: NextRequest) {
         },
       },
       update: {
-        checkIn: checkIn ? new Date(checkIn) : null,
-        checkOut: checkOut ? new Date(checkOut) : null,
+        checkIn: checkIn ? toDatetime(checkIn) : null,
+        checkOut: checkOut ? toDatetime(checkOut) : null,
         type: rest.type,
         notes: rest.notes ?? null,
         registeredById: session.user.id,
@@ -100,8 +108,8 @@ export async function POST(req: NextRequest) {
       create: {
         ...rest,
         date: new Date(date),
-        checkIn: checkIn ? new Date(checkIn) : null,
-        checkOut: checkOut ? new Date(checkOut) : null,
+        checkIn: checkIn ? toDatetime(checkIn) : null,
+        checkOut: checkOut ? toDatetime(checkOut) : null,
         registeredById: session.user.id,
       },
       include: {

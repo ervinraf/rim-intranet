@@ -324,7 +324,7 @@ export function Sidebar({ userRole, userName, department, companyName = "RIM Rig
 
       {/* Version */}
       <div className="px-6 pb-1">
-        <p className="text-xs" style={{ color: "rgba(148,163,184,.25)" }}>v4.0</p>
+        <p className="text-xs" style={{ color: "rgba(148,163,184,.25)" }}>v4.1</p>
       </div>
 
       {/* User footer */}
