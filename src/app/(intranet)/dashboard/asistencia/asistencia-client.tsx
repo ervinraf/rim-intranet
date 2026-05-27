@@ -219,8 +219,8 @@ export function AsistenciaClient({
       r.employee.fullName,
       r.employee.department?.name ?? "",
       r.date.slice(0, 10),
-      r.checkIn ? format(new Date(r.checkIn), "HH:mm") : "",
-      r.checkOut ? format(new Date(r.checkOut), "HH:mm") : "",
+      r.checkIn ? r.checkIn.slice(11, 16) : "",
+      r.checkOut ? r.checkOut.slice(11, 16) : "",
       typeConfig[r.type]?.label ?? r.type,
       r.notes ?? "",
     ])
@@ -231,8 +231,8 @@ export function AsistenciaClient({
     setEditingId(r.id)
     setEditError(null)
     setEditForm({
-      checkIn: r.checkIn ? format(new Date(r.checkIn), "HH:mm") : "",
-      checkOut: r.checkOut ? format(new Date(r.checkOut), "HH:mm") : "",
+      checkIn: r.checkIn ? r.checkIn.slice(11, 16) : "",
+      checkOut: r.checkOut ? r.checkOut.slice(11, 16) : "",
       type: r.type,
       notes: r.notes ?? "",
     })
@@ -471,7 +471,7 @@ export function AsistenciaClient({
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-          <Input className="pl-9" placeholder="Buscar empleado..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input className="pl-9" placeholder="Buscar empleado..." value={search} onChange={(e) => setSearch(e.target.value)} autoComplete="off" />
         </div>
         {isAdmin && (
           <>
@@ -557,8 +557,8 @@ export function AsistenciaClient({
                     <p className="text-sm font-medium text-slate-900">{r.employee.fullName}</p>
                     <p className="text-xs text-slate-500">
                       {format(new Date(r.date.slice(0, 10) + "T12:00:00"), "EEEE d 'de' MMMM", { locale: es })}
-                      {r.checkIn && ` · Entrada: ${format(new Date(r.checkIn), "HH:mm")}`}
-                      {r.checkOut && ` · Salida: ${format(new Date(r.checkOut), "HH:mm")}`}
+                      {r.checkIn && ` · Entrada: ${r.checkIn.slice(11, 16)}`}
+                      {r.checkOut && ` · Salida: ${r.checkOut.slice(11, 16)}`}
                       {r.employee.department && ` · ${r.employee.department.name}`}
                     </p>
                     {r.notes && <p className="text-xs text-slate-400 mt-0.5">{r.notes}</p>}
