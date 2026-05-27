@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Upload, CheckCircle, Building2, Clock, Plus, Pencil, Trash2, X, Globe } from "lucide-react"
+import { Upload, CheckCircle, Building2, Clock, Plus, Pencil, Trash2, X, Globe, DatabaseBackup, Loader2 } from "lucide-react"
 
 interface Department {
   id: string
@@ -28,12 +28,29 @@ interface Props {
   departments: Department[]
   roles: Role[]
   empresa: Record<string, string>
+  isSuperAdmin: boolean
 }
 
-type Tab = "general" | "departamentos" | "roles" | "empresa"
+type Tab = "general" | "departamentos" | "roles" | "empresa" | "respaldo"
 
-export function ConfigClient({ config, departments: initialDepts, roles: initialRoles, empresa: initialEmpresa }: Props) {
+export function ConfigClient({ config, departments: initialDepts, roles: initialRoles, empresa: initialEmpresa, isSuperAdmin }: Props) {
   const [tab, setTab] = useState<Tab>("general")
+  const [backupLoading, setBackupLoading] = useState(false)
+  const [backupMsg, setBackupMsg] = useState<{ ok: boolean; text: string } | null>(null)
+
+  async function triggerBackup() {
+    setBackupLoading(true)
+    setBackupMsg(null)
+    const res = await fetch("/api/backup/trigger", { method: "POST" })
+    if (res.ok) {
+      setBackupMsg({ ok: true, text: "Respaldo iniciado. Estara listo en GitHub Actions en ~1 minuto." })
+    } else {
+      const data = await res.json().catch(() => ({}))
+      setBackupMsg({ ok: false, text: data.error ?? "Error al iniciar respaldo" })
+    }
+    setBackupLoading(false)
+    setTimeout(() => setBackupMsg(null), 6000)
+  }
   const [logoUrl, setLogoUrl] = useState<string | null>(config.company_logo ?? null)
   const [companyName, setCompanyName] = useState(config.company_name ?? "RIM Rigging")
   const [expirationMonths, setExpirationMonths] = useState(config.hours_bank_expiration_months ?? "6")
@@ -218,6 +235,7 @@ export function ConfigClient({ config, departments: initialDepts, roles: initial
           { id: "empresa", label: "Empresa" },
           { id: "departamentos", label: "Departamentos" },
           { id: "roles", label: "Roles" },
+          ...(isSuperAdmin ? [{ id: "respaldo", label: "Respaldo" }] : []),
         ] as { id: Tab; label: string }[]).map((t) => (
           <button
             key={t.id}
@@ -461,6 +479,55 @@ export function ConfigClient({ config, departments: initialDepts, roles: initial
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {tab === "respaldo" && isSuperAdmin && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
+                <DatabaseBackup className="w-4 h-4" />
+                Respaldo de base de datos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-slate-500">
+                Dispara un respaldo inmediato via GitHub Actions. El archivo .sql quedara guardado como artifact por 90 dias.
+              </p>
+              <div className="flex items-center gap-3">
+                <Button onClick={triggerBackup} disabled={backupLoading}>
+                  {backupLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                      Iniciando...
+                    </>
+                  ) : (
+                    <>
+                      <DatabaseBackup className="w-4 h-4 mr-1.5" />
+                      Hacer respaldo ahora
+                    </>
+                  )}
+                </Button>
+                <a
+                  href="https://github.com/ervinraf/rim-intranet/actions/workflows/db-backup.yml"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:underline"
+                >
+                  Ver respaldos en GitHub
+                </a>
+              </div>
+              {backupMsg && (
+                <p className={`text-sm px-3 py-2 rounded-lg ${backupMsg.ok ? "bg-green-50 text-green-700 border border-green-100" : "bg-red-50 text-red-700 border border-red-100"}`}>
+                  {backupMsg.text}
+                </p>
+              )}
+              <p className="text-xs text-slate-400">
+                El respaldo automatico corre todos los dias a las 11:59pm hora de Mexico.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       )}
 
