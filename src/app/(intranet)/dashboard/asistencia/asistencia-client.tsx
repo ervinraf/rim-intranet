@@ -477,6 +477,7 @@ export function AsistenciaClient({
 
       {showImport && (
         <ImportAttendanceModal
+          employees={employees}
           onClose={() => setShowImport(false)}
           onImported={() => {
             setShowImport(false)

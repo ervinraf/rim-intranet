@@ -17,6 +17,7 @@ interface ParsedRow {
 }
 
 interface Props {
+  employees?: { fullName: string; itemNumber?: number | null }[]
   onImported: (result: { created: number; updated: number; errors: string[] }) => void
   onClose: () => void
 }
@@ -62,10 +63,14 @@ function parseTime(val: any): string {
   return str
 }
 
-export function downloadAttendanceTemplate() {
-  const ws = XLSX.utils.aoa_to_sheet([
-    ["Empleado", "Fecha", "Entrada", "Salida", "Tipo", "Notas"],
-  ])
+export function downloadAttendanceTemplate(employees?: { fullName: string; itemNumber?: number | null }[]) {
+  const rows: (string | number | null)[][] = [["Empleado", "Fecha", "Entrada", "Salida", "Tipo", "Notas"]]
+  if (employees?.length) {
+    for (const emp of employees) {
+      rows.push([emp.fullName, "", "", "", "NORMAL", ""])
+    }
+  }
+  const ws = XLSX.utils.aoa_to_sheet(rows)
 
   const notes: Record<string, string> = {
     A1: "Nombre completo del empleado (como aparece en el sistema).\nTambien acepta numero de empleado (Num/Item).\nEj: Carlos Gonzalez Lopez",
@@ -116,7 +121,7 @@ export function downloadAttendanceTemplate() {
   XLSX.writeFile(wb, "plantilla_asistencia.xlsx")
 }
 
-export function ImportAttendanceModal({ onImported, onClose }: Props) {
+export function ImportAttendanceModal({ employees, onImported, onClose }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [loading, setLoading] = useState(false)
@@ -243,7 +248,7 @@ export function ImportAttendanceModal({ onImported, onClose }: Props) {
                     Columnas: Empleado · Fecha · Entrada · Salida · Tipo · Notas
                   </p>
                 </div>
-                <Button variant="outline" size="sm" onClick={downloadAttendanceTemplate}>
+                <Button variant="outline" size="sm" onClick={() => downloadAttendanceTemplate(employees)}>
                   <Download className="w-3.5 h-3.5 mr-1.5" />
                   Plantilla
                 </Button>
