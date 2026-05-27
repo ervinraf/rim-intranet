@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Download, Search, ChevronLeft, ChevronRight, BarChart2, Users, FileSpreadsheet } from "lucide-react"
+import { Plus, Download, Search, ChevronLeft, ChevronRight, BarChart2, Users, FileSpreadsheet, Pencil, Trash2, Check, X } from "lucide-react"
 import { ImportAttendanceModal } from "@/components/attendance/import-attendance-modal"
 import {
   format, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
@@ -99,6 +99,10 @@ export function AsistenciaClient({
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [formSuccess, setFormSuccess] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState({ checkIn: "", checkOut: "", type: "NORMAL" as AttendanceType, notes: "" })
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   // Date range based on view mode
   const { rangeStart, rangeEnd, periodLabel } = useMemo(() => {
@@ -221,6 +225,50 @@ export function AsistenciaClient({
       r.notes ?? "",
     ])
     downloadCsv([header, ...rows], `asistencia_${format(currentDate, "yyyy-MM")}.csv`)
+  }
+
+  function startEdit(r: AttendanceRecord) {
+    setEditingId(r.id)
+    setEditError(null)
+    setEditForm({
+      checkIn: r.checkIn ? format(new Date(r.checkIn), "HH:mm") : "",
+      checkOut: r.checkOut ? format(new Date(r.checkOut), "HH:mm") : "",
+      type: r.type,
+      notes: r.notes ?? "",
+    })
+  }
+
+  async function saveEdit(id: string) {
+    setEditLoading(true)
+    setEditError(null)
+    try {
+      const res = await fetch(`/api/attendance/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          checkIn: editForm.checkIn || null,
+          checkOut: editForm.checkOut || null,
+          type: editForm.type,
+          notes: editForm.notes || null,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setRecords((p) => p.map((r) => (r.id === id ? data : r)))
+        setEditingId(null)
+      } else {
+        setEditError(data.error ?? "Error al guardar")
+      }
+    } catch {
+      setEditError("Error de conexion")
+    }
+    setEditLoading(false)
+  }
+
+  async function deleteRecord(id: string) {
+    if (!confirm("¿Eliminar este registro de asistencia?")) return
+    const res = await fetch(`/api/attendance/${id}`, { method: "DELETE" })
+    if (res.ok) setRecords((p) => p.filter((r) => r.id !== id))
   }
 
   return (
@@ -457,19 +505,79 @@ export function AsistenciaClient({
         )}
         {filtered.map((r) => {
           const tc = typeConfig[r.type]
+          const isEditing = editingId === r.id
           return (
-            <div key={r.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-900">{r.employee.fullName}</p>
-                <p className="text-xs text-slate-500">
-                  {format(new Date(r.date.slice(0, 10) + "T12:00:00"), "EEEE d 'de' MMMM", { locale: es })}
-                  {r.checkIn && ` · Entrada: ${format(new Date(r.checkIn), "HH:mm")}`}
-                  {r.checkOut && ` · Salida: ${format(new Date(r.checkOut), "HH:mm")}`}
-                  {r.employee.department && ` · ${r.employee.department.name}`}
-                </p>
-                {r.notes && <p className="text-xs text-slate-400 mt-0.5">{r.notes}</p>}
-              </div>
-              <Badge className={`${tc.bg} ${tc.color} text-xs border-0`}>{tc.label}</Badge>
+            <div key={r.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3">
+              {isEditing ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-slate-900">{r.employee.fullName}</p>
+                    <p className="text-xs text-slate-500">
+                      {format(new Date(r.date.slice(0, 10) + "T12:00:00"), "EEEE d 'de' MMMM", { locale: es })}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-500">Entrada</label>
+                      <Input type="time" value={editForm.checkIn} onChange={(e) => setEditForm((p) => ({ ...p, checkIn: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-500">Salida</label>
+                      <Input type="time" value={editForm.checkOut} onChange={(e) => setEditForm((p) => ({ ...p, checkOut: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-500">Tipo</label>
+                      <Select value={editForm.type} onValueChange={(v) => setEditForm((p) => ({ ...p, type: v as AttendanceType }))}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {(Object.keys(typeConfig) as AttendanceType[]).map((t) => (
+                            <SelectItem key={t} value={t}>{typeConfig[t].label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-slate-500">Notas</label>
+                      <Input value={editForm.notes} onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))} className="h-8 text-sm" placeholder="Opcional" />
+                    </div>
+                  </div>
+                  {editError && <p className="text-xs text-red-600">{editError}</p>}
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => saveEdit(r.id)} disabled={editLoading} className="h-7 text-xs">
+                      <Check className="w-3 h-3 mr-1" />{editLoading ? "Guardando..." : "Guardar"}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditingId(null)} className="h-7 text-xs">
+                      <X className="w-3 h-3 mr-1" />Cancelar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{r.employee.fullName}</p>
+                    <p className="text-xs text-slate-500">
+                      {format(new Date(r.date.slice(0, 10) + "T12:00:00"), "EEEE d 'de' MMMM", { locale: es })}
+                      {r.checkIn && ` · Entrada: ${format(new Date(r.checkIn), "HH:mm")}`}
+                      {r.checkOut && ` · Salida: ${format(new Date(r.checkOut), "HH:mm")}`}
+                      {r.employee.department && ` · ${r.employee.department.name}`}
+                    </p>
+                    {r.notes && <p className="text-xs text-slate-400 mt-0.5">{r.notes}</p>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className={`${tc.bg} ${tc.color} text-xs border-0`}>{tc.label}</Badge>
+                    {isAdmin && (
+                      <>
+                        <button type="button" onClick={() => startEdit(r)} className="p-1 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-100">
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button type="button" onClick={() => deleteRecord(r.id)} className="p-1 text-slate-400 hover:text-red-600 rounded hover:bg-red-50">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )
         })}
