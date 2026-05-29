@@ -11,25 +11,37 @@ interface BulkRow {
   notes?: string | null
 }
 
-function findEmployee(identifier: string, employees: any[]) {
-  const clean = identifier.trim().toLowerCase()
-  if (!clean) return null
+function norm(s: string): string {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim()
+}
 
-  // Exact fullName
-  let emp = employees.find((e) => e.fullName.toLowerCase() === clean)
-  if (emp) return emp
+function findEmployee(identifier: string, employees: any[]) {
+  const clean = norm(identifier)
+  if (!clean) return null
 
   // Item number
   const num = parseInt(identifier.trim())
   if (!isNaN(num)) {
-    emp = employees.find((e) => e.itemNumber === num)
+    const emp = employees.find((e) => e.itemNumber === num)
     if (emp) return emp
   }
 
-  // Partial: any word in identifier matches start of fullName or vice versa
+  // Exact full name (accent-insensitive)
+  let emp = employees.find((e) => norm(e.fullName) === clean)
+  if (emp) return emp
+
+  // Full name contains identifier or vice versa
   emp = employees.find((e) => {
-    const name = e.fullName.toLowerCase()
-    return name.includes(clean) || clean.includes(name.split(" ")[0])
+    const name = norm(e.fullName)
+    return name.includes(clean) || clean.includes(name)
+  })
+  if (emp) return emp
+
+  // Any word in identifier matches any word in employee name
+  const parts = clean.split(/\s+/).filter(Boolean)
+  emp = employees.find((e) => {
+    const nameParts = norm(e.fullName).split(/\s+/)
+    return parts.some((p) => nameParts.some((n) => n.startsWith(p) || p.startsWith(n)))
   })
   return emp ?? null
 }

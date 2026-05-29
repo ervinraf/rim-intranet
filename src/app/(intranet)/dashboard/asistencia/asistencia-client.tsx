@@ -587,8 +587,7 @@ export function AsistenciaClient({
         <ImportAttendanceModal
           employees={employees}
           onClose={() => setShowImport(false)}
-          onImported={() => {
-            setShowImport(false)
+          onImported={(_result) => {
             window.location.reload()
           }}
         />

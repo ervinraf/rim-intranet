@@ -214,7 +214,7 @@ export function ImportAttendanceModal({ employees, onImported, onClose }: Props)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error ?? "Error al importar")
       setResult(data)
-      onImported(data)
+      // onImported is called when the user clicks Cerrar (see button below)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -335,8 +335,8 @@ export function ImportAttendanceModal({ employees, onImported, onClose }: Props)
         </div>
 
         <div className="px-6 py-4 border-t border-slate-200 flex gap-2 justify-end">
-          <Button variant="outline" onClick={onClose}>
-            {result ? "Cerrar" : "Cancelar"}
+          <Button variant="outline" onClick={result ? () => onImported(result) : onClose}>
+            {result ? "Cerrar y recargar" : "Cancelar"}
           </Button>
           {!result && validCount > 0 && (
             <Button onClick={handleImport} disabled={loading}>

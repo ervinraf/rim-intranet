@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Plus, FileText, ChevronDown, ChevronUp, ClipboardList, Printer, Camera } from "lucide-react"
+import { Plus, FileText, ChevronDown, ChevronUp, ClipboardList, Printer, Camera, FileSpreadsheet } from "lucide-react"
+import { ImportInventoryModal } from "./import-inventory-modal"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
@@ -36,6 +37,7 @@ interface Props {
 
 export function EquipmentTab({ equipment, departments, projects, isAdmin, search, onUpdate }: Props) {
   const [showAddForm, setShowAddForm] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [logModal, setLogModal] = useState<any | null>(null)
   const [techModal, setTechModal] = useState<any | null>(null)
@@ -151,7 +153,10 @@ export function EquipmentTab({ equipment, departments, projects, isAdmin, search
   return (
     <div className="space-y-4">
       {isAdmin && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="outline" onClick={() => setShowImport(true)}>
+            <FileSpreadsheet className="w-4 h-4 mr-1.5" /> Importar Excel
+          </Button>
           <Button size="sm" onClick={() => setShowAddForm(!showAddForm)}>
             <Plus className="w-4 h-4 mr-1.5" /> Agregar equipo
           </Button>
@@ -247,6 +252,14 @@ export function EquipmentTab({ equipment, departments, projects, isAdmin, search
           )
         })}
       </div>
+
+      {showImport && (
+        <ImportInventoryModal
+          type="equipment"
+          onClose={() => setShowImport(false)}
+          onImported={() => window.location.reload()}
+        />
+      )}
 
       {/* Hoja tecnica modal */}
       {techModal && (

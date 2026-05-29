@@ -12,10 +12,11 @@ import {
 } from "@/components/ui/select"
 import {
   Plus, Search, Fuel, Wallet, Plane, Wrench,
-  CheckCircle, X, ChevronDown, ChevronUp, Paperclip, FileText, Image,
+  CheckCircle, X, ChevronDown, ChevronUp, Paperclip, FileText, Image, Download, BarChart2,
 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { downloadCsv } from "@/lib/csv"
 
 type ValeType = "COMBUSTIBLE" | "CAJA_CHICA" | "VIATICOS" | "HERRAMIENTA"
 type ValeStatus = "PENDIENTE" | "APROBADO" | "RECHAZADO"
@@ -118,6 +119,8 @@ export function ValesClient({ vales: initial, employees, projects, currentEmploy
     })
   }, [vales, search, filterType, filterStatus])
 
+  const [showReport, setShowReport] = useState(false)
+
   const totals = useMemo(() => {
     const aprobados = filtered.filter((v) => v.status === "APROBADO")
     return {
@@ -126,6 +129,41 @@ export function ValesClient({ vales: initial, employees, projects, currentEmploy
       litros: aprobados.filter((v) => v.type === "COMBUSTIBLE").reduce((s, v) => s + (v.liters ? Number(v.liters) : 0), 0),
     }
   }, [filtered])
+
+  const reportByCategory = useMemo(() => {
+    return (Object.keys(typeConfig) as ValeType[]).map((type) => {
+      const group = filtered.filter((v) => v.type === type)
+      const aprobados = group.filter((v) => v.status === "APROBADO")
+      return {
+        type,
+        label: typeConfig[type].label,
+        color: typeConfig[type].color,
+        total: group.length,
+        pendientes: group.filter((v) => v.status === "PENDIENTE").length,
+        aprobados: aprobados.length,
+        rechazados: group.filter((v) => v.status === "RECHAZADO").length,
+        monto: aprobados.reduce((s, v) => s + (v.amount ? Number(v.amount) : 0), 0),
+        litros: type === "COMBUSTIBLE" ? aprobados.reduce((s, v) => s + (v.liters ? Number(v.liters) : 0), 0) : null,
+      }
+    }).filter((r) => r.total > 0)
+  }, [filtered])
+
+  function exportCsv() {
+    const header = ["Tipo", "Fecha", "Empleado", "Proyecto", "Concepto", "Vehiculo", "Litros", "Monto", "Proveedor", "Estado"]
+    const rows = filtered.map((v) => [
+      typeConfig[v.type]?.label ?? v.type,
+      v.date.slice(0, 10),
+      v.employee.fullName,
+      v.project?.name ?? "",
+      v.concept,
+      v.vehicle ?? "",
+      v.liters != null ? String(v.liters) : "",
+      v.amount != null ? String(v.amount) : "",
+      v.vendor ?? "",
+      statusConfig[v.status]?.label ?? v.status,
+    ])
+    downloadCsv([header, ...rows], `vales_${new Date().toISOString().slice(0, 10)}.csv`)
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -189,15 +227,25 @@ export function ValesClient({ vales: initial, employees, projects, currentEmploy
 
   return (
     <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Vales</h1>
           <p className="text-sm text-slate-500 mt-0.5">Combustible, caja chica, viaticos y herramientas</p>
         </div>
-        <Button onClick={() => setShowForm((v) => !v)} size="sm">
-          <Plus className="w-4 h-4 mr-1.5" />
-          Nuevo vale
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowReport((v) => !v)} className={showReport ? "bg-slate-100" : ""}>
+            <BarChart2 className="w-4 h-4 mr-1.5" />
+            Por categoria
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportCsv}>
+            <Download className="w-4 h-4 mr-1.5" />
+            Exportar CSV
+          </Button>
+          <Button onClick={() => setShowForm((v) => !v)} size="sm">
+            <Plus className="w-4 h-4 mr-1.5" />
+            Nuevo vale
+          </Button>
+        </div>
       </div>
 
       {/* Resumen */}
@@ -217,6 +265,66 @@ export function ValesClient({ vales: initial, employees, projects, currentEmploy
           <p className="text-2xl font-semibold text-blue-600">{totals.litros.toFixed(1)} L</p>
         </div>
       </div>
+
+      {/* Reporte por categoria */}
+      {showReport && reportByCategory.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+            <p className="text-sm font-semibold text-slate-800">Reporte por categoria</p>
+            <p className="text-xs text-slate-400">{filtered.length} vales en el filtro actual</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="text-left px-5 py-2.5 text-xs font-semibold text-slate-500">Categoria</th>
+                  <th className="text-right px-4 py-2.5 text-xs font-semibold text-slate-500">Total</th>
+                  <th className="text-right px-4 py-2.5 text-xs font-semibold text-amber-600">Pendientes</th>
+                  <th className="text-right px-4 py-2.5 text-xs font-semibold text-green-600">Aprobados</th>
+                  <th className="text-right px-4 py-2.5 text-xs font-semibold text-red-500">Rechazados</th>
+                  <th className="text-right px-5 py-2.5 text-xs font-semibold text-slate-500">Monto aprobado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {reportByCategory.map((r) => (
+                  <tr key={r.type} className="hover:bg-slate-50">
+                    <td className="px-5 py-3">
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${r.color}`}>
+                        {r.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium text-slate-700">{r.total}</td>
+                    <td className="px-4 py-3 text-right text-amber-600 font-medium">{r.pendientes || "—"}</td>
+                    <td className="px-4 py-3 text-right text-green-600 font-medium">{r.aprobados || "—"}</td>
+                    <td className="px-4 py-3 text-right text-red-500">{r.rechazados || "—"}</td>
+                    <td className="px-5 py-3 text-right font-semibold text-slate-800">
+                      {r.monto > 0 ? (
+                        <span>
+                          ${r.monto.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                          {r.litros != null && r.litros > 0 && (
+                            <span className="ml-2 text-xs text-blue-600 font-normal">{r.litros.toFixed(1)} L</span>
+                          )}
+                        </span>
+                      ) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-slate-50 border-t border-slate-200">
+                <tr>
+                  <td className="px-5 py-2.5 text-xs font-semibold text-slate-600">Total</td>
+                  <td className="px-4 py-2.5 text-right text-xs font-semibold text-slate-700">{filtered.length}</td>
+                  <td className="px-4 py-2.5 text-right text-xs font-semibold text-amber-600">{totals.pendientes || "—"}</td>
+                  <td colSpan={2} />
+                  <td className="px-5 py-2.5 text-right text-xs font-semibold text-slate-800">
+                    ${totals.monto.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Form */}
       {showForm && (

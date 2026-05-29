@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Download, Users, GanttChartSquare, UserCheck } from "lucide-react"
+import { Download, Users, GanttChartSquare, UserCheck, Wrench, Package } from "lucide-react"
 import * as XLSX from "xlsx"
 import { downloadAttendanceTemplate } from "@/components/attendance/import-attendance-modal"
 
@@ -124,6 +124,102 @@ function downloadEmpleados() {
   XLSX.writeFile(wb, "plantilla_empleados.xlsx")
 }
 
+function downloadHerramientas() {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ["Codigo", "Nombre", "Marca", "Modelo", "No.Serie", "Departamento", "Ubicacion", "Notas"],
+  ])
+  const notes: Record<string, string> = {
+    A1: "Codigo interno de la herramienta (opcional).\nEj: HERR-001, T-042",
+    B1: "Nombre descriptivo de la herramienta. Requerido.\nEj: Tecle de cadena 3 ton, Eslinga doble 4m",
+    C1: "Marca del fabricante (opcional).\nEj: Greenfield, CM, Crosby",
+    D1: "Modelo especifico (opcional).\nEj: R-300, SL-4X4",
+    E1: "Numero de serie del fabricante (opcional).",
+    F1: "Departamento asignado (debe existir en el sistema).\nEj: Operaciones, Taller, Almacen",
+    G1: "Ubicacion fisica dentro de la empresa.\nEj: Bodega Norte, Rack 3, Camion 2",
+    H1: "Observaciones adicionales (opcional).",
+  }
+  Object.entries(notes).forEach(([cell, text]) => {
+    if (!ws[cell].c) ws[cell].c = []
+    ws[cell].c.push({ a: "Intranet", t: text })
+  })
+  ws["!cols"] = [{ wch: 12 }, { wch: 32 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 28 }]
+
+  const inst = XLSX.utils.aoa_to_sheet([
+    ["PLANTILLA DE HERRAMIENTAS - INTRANET RIM RIGGING"],
+    [""],
+    ["Llena la hoja 'Herramientas' con el inventario a importar."],
+    ["Si una herramienta ya existe en el sistema, se omite (no duplica)."],
+    [""],
+    ["COLUMNA", "DESCRIPCION", "REQUERIDA", "EJEMPLO"],
+    ["Codigo", "Codigo interno de identificacion", "NO", "HERR-001"],
+    ["Nombre", "Nombre descriptivo de la herramienta", "SI", "Tecle de cadena 3 ton"],
+    ["Marca", "Marca del fabricante", "NO", "Greenfield"],
+    ["Modelo", "Modelo del equipo", "NO", "R-300"],
+    ["No.Serie", "Numero de serie del fabricante", "NO", "SN-2024-0123"],
+    ["Departamento", "Departamento asignado (debe existir en el sistema)", "NO", "Operaciones"],
+    ["Ubicacion", "Ubicacion fisica", "NO", "Bodega Norte"],
+    ["Notas", "Observaciones adicionales", "NO", "Revision pendiente"],
+  ])
+  inst["!cols"] = [{ wch: 14 }, { wch: 55 }, { wch: 12 }, { wch: 22 }]
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, "Herramientas")
+  XLSX.utils.book_append_sheet(wb, inst, "Instrucciones")
+  XLSX.writeFile(wb, "plantilla_herramientas.xlsx")
+}
+
+function downloadEquipos() {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ["Codigo", "Nombre", "Marca", "Modelo", "No.Serie", "Departamento", "Ubicacion", "FechaCompra", "PrecioCompra", "ProxServicio", "Notas"],
+  ])
+  const notes: Record<string, string> = {
+    A1: "Codigo interno del equipo (opcional).\nEj: EQ-001, GR-003",
+    B1: "Nombre descriptivo del equipo. Requerido.\nEj: Grua torre 50 ton, Plataforma elevadora",
+    C1: "Marca del fabricante (opcional).\nEj: Liebherr, JLG, Manitowoc",
+    D1: "Modelo especifico (opcional).",
+    E1: "Numero de serie del fabricante (opcional).",
+    F1: "Departamento asignado (debe existir en el sistema).\nEj: Operaciones, Taller",
+    G1: "Ubicacion fisica o proyecto asignado.\nEj: Obra Norte, Patio Taller",
+    H1: "Fecha de compra o adquisicion.\nFormato: DD/MM/YYYY o YYYY-MM-DD",
+    I1: "Precio de compra en pesos MXN (solo numero).\nEj: 350000",
+    J1: "Fecha del proximo servicio o mantenimiento.\nFormato: DD/MM/YYYY o YYYY-MM-DD",
+    K1: "Observaciones adicionales (opcional).",
+  }
+  Object.entries(notes).forEach(([cell, text]) => {
+    if (!ws[cell].c) ws[cell].c = []
+    ws[cell].c.push({ a: "Intranet", t: text })
+  })
+  ws["!cols"] = [
+    { wch: 10 }, { wch: 32 }, { wch: 14 }, { wch: 14 }, { wch: 16 },
+    { wch: 16 }, { wch: 18 }, { wch: 13 }, { wch: 14 }, { wch: 13 }, { wch: 28 },
+  ]
+
+  const inst = XLSX.utils.aoa_to_sheet([
+    ["PLANTILLA DE EQUIPOS - INTRANET RIM RIGGING"],
+    [""],
+    ["Llena la hoja 'Equipos' con el inventario a importar."],
+    [""],
+    ["COLUMNA", "DESCRIPCION", "REQUERIDA", "EJEMPLO"],
+    ["Codigo", "Codigo interno de identificacion", "NO", "EQ-001"],
+    ["Nombre", "Nombre descriptivo del equipo", "SI", "Grua torre 50 ton"],
+    ["Marca", "Marca del fabricante", "NO", "Liebherr"],
+    ["Modelo", "Modelo del equipo", "NO", "LTM-1050"],
+    ["No.Serie", "Numero de serie del fabricante", "NO", "LH2024001"],
+    ["Departamento", "Departamento asignado (debe existir en el sistema)", "NO", "Operaciones"],
+    ["Ubicacion", "Ubicacion fisica o proyecto", "NO", "Obra Norte"],
+    ["FechaCompra", "Fecha de adquisicion (DD/MM/YYYY)", "NO", "15/01/2023"],
+    ["PrecioCompra", "Costo de adquisicion en MXN (numero)", "NO", "350000"],
+    ["ProxServicio", "Fecha del proximo mantenimiento (DD/MM/YYYY)", "NO", "30/06/2026"],
+    ["Notas", "Observaciones adicionales", "NO", "Calibracion pendiente"],
+  ])
+  inst["!cols"] = [{ wch: 14 }, { wch: 55 }, { wch: 12 }, { wch: 22 }]
+
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, ws, "Equipos")
+  XLSX.utils.book_append_sheet(wb, inst, "Instrucciones")
+  XLSX.writeFile(wb, "plantilla_equipos.xlsx")
+}
+
 const templates: Template[] = [
   {
     id: "asistencia",
@@ -176,6 +272,45 @@ const templates: Template[] = [
       { name: "INGRESO", description: "Fecha de ingreso (DD/MM/YYYY)", required: false, example: "15/03/2024" },
     ],
     onDownload: downloadEmpleados,
+  },
+  {
+    id: "herramientas",
+    title: "Importar herramientas",
+    description: "Carga masiva del inventario de herramientas. Despues de subir la plantilla usa el boton 'Importar Excel' en el modulo de Herramientas.",
+    format: "Excel (.xlsx)",
+    module: "Herramientas y Equipo",
+    icon: Wrench,
+    columns: [
+      { name: "Codigo", description: "Codigo interno de identificacion", required: false, example: "HERR-001" },
+      { name: "Nombre", description: "Nombre descriptivo de la herramienta", required: true, example: "Tecle de cadena 3 ton" },
+      { name: "Marca", description: "Marca del fabricante", required: false, example: "Greenfield" },
+      { name: "Modelo", description: "Modelo especifico", required: false, example: "R-300" },
+      { name: "No.Serie", description: "Numero de serie", required: false, example: "SN-2024-0123" },
+      { name: "Departamento", description: "Departamento asignado (debe existir en el sistema)", required: false, example: "Operaciones" },
+      { name: "Ubicacion", description: "Ubicacion fisica", required: false, example: "Bodega Norte" },
+      { name: "Notas", description: "Observaciones adicionales", required: false, example: "Revision pendiente" },
+    ],
+    onDownload: downloadHerramientas,
+  },
+  {
+    id: "equipos",
+    title: "Importar equipos",
+    description: "Carga masiva del inventario de equipos mayores (gruas, plataformas, maquinaria). Usa el boton 'Importar Excel' en el modulo de Equipos.",
+    format: "Excel (.xlsx)",
+    module: "Herramientas y Equipo",
+    icon: Package,
+    columns: [
+      { name: "Codigo", description: "Codigo interno de identificacion", required: false, example: "EQ-001" },
+      { name: "Nombre", description: "Nombre descriptivo del equipo", required: true, example: "Grua torre 50 ton" },
+      { name: "Marca", description: "Marca del fabricante", required: false, example: "Liebherr" },
+      { name: "Modelo", description: "Modelo especifico", required: false, example: "LTM-1050" },
+      { name: "No.Serie", description: "Numero de serie", required: false, example: "LH2024001" },
+      { name: "Departamento", description: "Departamento asignado", required: false, example: "Operaciones" },
+      { name: "FechaCompra", description: "Fecha de adquisicion (DD/MM/YYYY)", required: false, example: "15/01/2023" },
+      { name: "PrecioCompra", description: "Costo de adquisicion en MXN (numero)", required: false, example: "350000" },
+      { name: "ProxServicio", description: "Fecha del proximo mantenimiento (DD/MM/YYYY)", required: false, example: "30/06/2026" },
+    ],
+    onDownload: downloadEquipos,
   },
 ]
 

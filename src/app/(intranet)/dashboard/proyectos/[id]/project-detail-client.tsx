@@ -214,6 +214,9 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
     setSaving(false)
   }
 
+  const replaceFileInputRef = useRef<HTMLInputElement>(null)
+  const [replacingPhotoId, setReplacingPhotoId] = useState<string | null>(null)
+
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>, taskId?: string) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -230,6 +233,44 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
         )
       }
     }
+    setUploading(false)
+    e.target.value = ""
+  }
+
+  async function deletePhoto(photoId: string, taskId: string | null | undefined) {
+    if (!confirm("¿Eliminar esta foto?")) return
+    const res = await fetch(`/api/projects/${project.id}/photos?photoId=${photoId}`, { method: "DELETE" })
+    if (res.ok) {
+      setTasks((prev) =>
+        prev.map((t) => t.id === taskId ? { ...t, photos: t.photos.filter((p: Photo) => p.id !== photoId) } : t)
+      )
+    }
+  }
+
+  async function handleReplacePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !replacingPhotoId) return
+    // Find which task owns this photo
+    const task = tasks.find((t) => t.photos.some((p: Photo) => p.id === replacingPhotoId))
+    if (!task) return
+    setUploading(true)
+    // Delete old
+    await fetch(`/api/projects/${project.id}/photos?photoId=${replacingPhotoId}`, { method: "DELETE" })
+    // Upload new
+    const fd = new FormData()
+    fd.append("file", file)
+    fd.append("taskId", task.id)
+    const res = await fetch(`/api/projects/${project.id}/photos`, { method: "POST", body: fd })
+    if (res.ok) {
+      const newPhoto = await res.json()
+      setTasks((prev) =>
+        prev.map((t) => t.id === task.id
+          ? { ...t, photos: [newPhoto, ...t.photos.filter((p: Photo) => p.id !== replacingPhotoId)] }
+          : t
+        )
+      )
+    }
+    setReplacingPhotoId(null)
     setUploading(false)
     e.target.value = ""
   }
@@ -687,12 +728,33 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
                   <CardContent className="pt-0 pb-4 px-4">
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
                       {task.photos.map((photo) => (
-                        <div key={photo.id} className="relative aspect-square rounded-lg overflow-hidden bg-slate-100">
+                        <div key={photo.id} className="relative aspect-square rounded-lg overflow-hidden bg-slate-100 group">
                           <img
                             src={photo.url}
                             alt={photo.caption ?? "foto de avance"}
                             className="w-full h-full object-cover"
                           />
+                          {isAdmin && (
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <button
+                                title="Reemplazar foto"
+                                className="bg-white/90 hover:bg-white text-slate-700 rounded-full p-1.5 transition-colors"
+                                onClick={() => {
+                                  setReplacingPhotoId(photo.id)
+                                  replaceFileInputRef.current?.click()
+                                }}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                title="Eliminar foto"
+                                className="bg-white/90 hover:bg-red-100 text-red-600 rounded-full p-1.5 transition-colors"
+                                onClick={() => deletePhoto(photo.id, photo.taskId)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ))}
                       {task.photos.length === 0 && (
@@ -707,6 +769,13 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
                           className="hidden"
                           ref={fileInputRef}
                           onChange={(e) => handlePhotoUpload(e, activeTaskForPhoto ?? undefined)}
+                        />
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          ref={replaceFileInputRef}
+                          onChange={handleReplacePhoto}
                         />
                         <Button
                           variant="outline"

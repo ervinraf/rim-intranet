@@ -47,6 +47,24 @@ export async function PATCH(
     return NextResponse.json(list)
   }
 
+  // Actualizar observaciones
+  if (body.observations !== undefined) {
+    const list = await prisma.checkList.update({
+      where: { id },
+      data: { observations: body.observations || null },
+    })
+    return NextResponse.json(list)
+  }
+
+  // Actualizar archivo adjunto
+  if (body.fileUrl !== undefined) {
+    const list = await prisma.checkList.update({
+      where: { id },
+      data: { fileUrl: body.fileUrl || null, fileName: body.fileName || null },
+    })
+    return NextResponse.json(list)
+  }
+
   return NextResponse.json({ error: "Sin cambios validos" }, { status: 400 })
 }
 

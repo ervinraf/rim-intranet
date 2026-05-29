@@ -812,16 +812,19 @@ enum CheckListType {
 }
 
 model CheckList {
-  id          String        @id @default(cuid())
-  title       String
-  type        CheckListType @default(OPERATIVO)
-  projectId   String?
-  equipmentId String?
-  createdById String
-  completedAt DateTime?
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id           String        @id @default(cuid())
+  title        String
+  type         CheckListType @default(OPERATIVO)
+  projectId    String?
+  equipmentId  String?
+  createdById  String
+  completedAt  DateTime?
+  isActive     Boolean       @default(true)
+  fileUrl      String?
+  fileName     String?
+  observations String?       @db.Text
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   items     CheckListItem[]
   project   Project?   @relation(fields: [projectId], references: [id])

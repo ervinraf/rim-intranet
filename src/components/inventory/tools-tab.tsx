@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Plus, ArrowRightLeft, RotateCcw, Wrench, Printer } from "lucide-react"
+import { Plus, ArrowRightLeft, RotateCcw, Wrench, Printer, FileSpreadsheet } from "lucide-react"
+import { ImportInventoryModal } from "./import-inventory-modal"
 
 const statusConfig = {
   DISPONIBLE: { label: "Disponible", className: "bg-green-100 text-green-700" },
@@ -38,6 +39,7 @@ interface Props {
 
 export function ToolsTab({ tools, departments, projects, employees, isAdmin, search, onUpdate }: Props) {
   const [showAddForm, setShowAddForm] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [checkoutModal, setCheckoutModal] = useState<any | null>(null)
   const [newTool, setNewTool] = useState({ name: "", code: "", brand: "", departmentId: "", location: "" })
   const [checkoutData, setCheckoutData] = useState({ employeeId: "", projectId: "", expectedReturn: "", notes: "" })
@@ -102,7 +104,11 @@ export function ToolsTab({ tools, departments, projects, employees, isAdmin, sea
   return (
     <div className="space-y-4">
       {isAdmin && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="outline" onClick={() => setShowImport(true)}>
+            <FileSpreadsheet className="w-4 h-4 mr-1.5" />
+            Importar Excel
+          </Button>
           <Button size="sm" onClick={() => setShowAddForm(!showAddForm)}>
             <Plus className="w-4 h-4 mr-1.5" />
             Agregar herramienta
@@ -212,6 +218,14 @@ export function ToolsTab({ tools, departments, projects, employees, isAdmin, sea
           </tbody>
         </table>
       </div>
+
+      {showImport && (
+        <ImportInventoryModal
+          type="tools"
+          onClose={() => setShowImport(false)}
+          onImported={() => window.location.reload()}
+        />
+      )}
 
       {/* Checkout modal */}
       {checkoutModal && (

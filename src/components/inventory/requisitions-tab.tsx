@@ -20,7 +20,7 @@ const statusConfig = {
   SURTIDO:   { label: "Surtido",   variant: "default" as const },
 }
 
-interface ReqItem { name: string; quantity: number; unit?: string; notes?: string }
+interface ReqItem { name: string; quantity: number; unit?: string; unitPrice?: number; notes?: string }
 
 interface Props {
   requisitions: any[]
@@ -36,7 +36,7 @@ export function RequisitionsTab({ requisitions, departments, projects, isAdmin, 
   const [showHistory, setShowHistory] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [form, setForm] = useState({ title: "", description: "", priority: "NORMAL", departmentId: "", projectId: "" })
-  const [items, setItems] = useState<ReqItem[]>([{ name: "", quantity: 1, unit: "pza" }])
+  const [items, setItems] = useState<ReqItem[]>([{ name: "", quantity: 1, unit: "pza", unitPrice: undefined }])
   const [loading, setLoading] = useState(false)
 
   const filtered = useMemo(() =>
@@ -60,6 +60,7 @@ export function RequisitionsTab({ requisitions, departments, projects, isAdmin, 
         table { width: 100%; border-collapse: collapse; margin-top: 16px; }
         th { background: #f1f5f9; padding: 8px 12px; text-align: left; font-size: 13px; border-bottom: 2px solid #e2e8f0; }
         td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+        .total-row { font-weight: bold; background: #f8fafc; }
         .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 12px; color: #94a3b8; }
         .status { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; background: #f1f5f9; }
         @media print { button { display: none; } }
@@ -75,8 +76,14 @@ export function RequisitionsTab({ requisitions, departments, projects, isAdmin, 
         <h2 style="font-size:16px;margin-bottom:4px">${req.title}</h2>
         ${req.description ? `<p style="color:#475569;font-size:14px">${req.description}</p>` : ""}
         <table>
-          <thead><tr><th>Articulo</th><th style="text-align:right;width:80px">Cantidad</th><th style="width:80px">Unidad</th></tr></thead>
-          <tbody>${items.map((i) => `<tr><td>${i.name}</td><td style="text-align:right">${i.quantity}</td><td>${i.unit ?? ""}</td></tr>`).join("")}</tbody>
+          <thead><tr><th>Articulo</th><th style="text-align:right;width:80px">Cantidad</th><th style="width:80px">Unidad</th><th style="text-align:right;width:110px">P. Unit.</th><th style="text-align:right;width:120px">Subtotal</th></tr></thead>
+          <tbody>
+            ${items.map((i) => {
+              const sub = i.unitPrice ? i.unitPrice * i.quantity : null
+              return `<tr><td>${i.name}</td><td style="text-align:right">${i.quantity}</td><td>${i.unit ?? ""}</td><td style="text-align:right">${i.unitPrice ? "$" + i.unitPrice.toLocaleString("es-MX", { minimumFractionDigits: 2 }) : "—"}</td><td style="text-align:right">${sub ? "$" + sub.toLocaleString("es-MX", { minimumFractionDigits: 2 }) : "—"}</td></tr>`
+            }).join("")}
+            ${(() => { const t = items.reduce((s, i) => s + (i.unitPrice ? i.unitPrice * i.quantity : 0), 0); return t > 0 ? `<tr class="total-row"><td colspan="4" style="text-align:right">Total estimado</td><td style="text-align:right">$${t.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</td></tr>` : "" })()}
+          </tbody>
         </table>
         <div class="footer">RIM Rigging &nbsp;·&nbsp; Generado el ${format(new Date(), "d/MM/yyyy HH:mm")}</div>
         <script>window.onload = () => { window.print(); }</script>
@@ -86,10 +93,14 @@ export function RequisitionsTab({ requisitions, departments, projects, isAdmin, 
   }
 
   function addItem() {
-    setItems((prev) => [...prev, { name: "", quantity: 1, unit: "pza" }])
+    setItems((prev) => [...prev, { name: "", quantity: 1, unit: "pza", unitPrice: undefined }])
   }
 
-  function updateItem(i: number, key: keyof ReqItem, value: string | number) {
+  function totalCost(list: ReqItem[]): number {
+    return list.reduce((sum, i) => sum + (i.unitPrice ? i.unitPrice * i.quantity : 0), 0)
+  }
+
+  function updateItem(i: number, key: keyof ReqItem, value: string | number | undefined) {
     setItems((prev) => prev.map((item, idx) => idx === i ? { ...item, [key]: value } : item))
   }
 
@@ -176,14 +187,26 @@ export function RequisitionsTab({ requisitions, departments, projects, isAdmin, 
                 <Button size="sm" variant="ghost" onClick={addItem} className="h-6 text-xs">+ Agregar</Button>
               </div>
               <div className="space-y-2">
+                <div className="grid grid-cols-12 gap-2 text-xs text-slate-400 px-1">
+                  <span className="col-span-5">Descripcion</span>
+                  <span className="col-span-2 text-center">Cant.</span>
+                  <span className="col-span-2">Unidad</span>
+                  <span className="col-span-2">P. Unit. ($)</span>
+                </div>
                 {items.map((item, i) => (
                   <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                    <Input className="col-span-6" placeholder="Articulo..." value={item.name} onChange={(e) => updateItem(i, "name", e.target.value)} />
+                    <Input className="col-span-5" placeholder="Articulo..." value={item.name} onChange={(e) => updateItem(i, "name", e.target.value)} />
                     <Input className="col-span-2" type="number" min="1" value={item.quantity} onChange={(e) => updateItem(i, "quantity", parseFloat(e.target.value))} />
                     <Input className="col-span-2" placeholder="pza" value={item.unit ?? ""} onChange={(e) => updateItem(i, "unit", e.target.value)} />
-                    <Button variant="ghost" size="sm" className="col-span-2 h-8 text-red-400 hover:text-red-600" onClick={() => removeItem(i)}>✕</Button>
+                    <Input className="col-span-2" type="number" min="0" step="0.01" placeholder="0.00" value={item.unitPrice != null ? item.unitPrice : ""} onChange={(e) => updateItem(i, "unitPrice", e.target.value === "" ? undefined : parseFloat(e.target.value))} />
+                    <Button variant="ghost" size="sm" className="col-span-1 h-8 text-red-400 hover:text-red-600 px-0" onClick={() => removeItem(i)}>✕</Button>
                   </div>
                 ))}
+                {totalCost(items) > 0 && (
+                  <div className="text-right text-sm font-medium text-slate-700 pr-8 pt-1">
+                    Total estimado: ${totalCost(items).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -257,18 +280,30 @@ export function RequisitionsTab({ requisitions, departments, projects, isAdmin, 
                         <th className="text-left pb-1">Articulo</th>
                         <th className="text-right pb-1 w-16">Cant.</th>
                         <th className="text-left pb-1 w-16 pl-2">Unidad</th>
+                        <th className="text-right pb-1 w-24">P. Unit.</th>
+                        <th className="text-right pb-1 w-24">Subtotal</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {reqItems.map((item, i) => (
-                        <tr key={i}>
-                          <td className="py-1 text-slate-700">{item.name}</td>
-                          <td className="py-1 text-right text-slate-600 font-medium">{item.quantity}</td>
-                          <td className="py-1 pl-2 text-slate-400">{item.unit}</td>
-                        </tr>
-                      ))}
+                      {reqItems.map((item, i) => {
+                        const sub = item.unitPrice ? item.unitPrice * item.quantity : null
+                        return (
+                          <tr key={i}>
+                            <td className="py-1 text-slate-700">{item.name}</td>
+                            <td className="py-1 text-right text-slate-600 font-medium">{item.quantity}</td>
+                            <td className="py-1 pl-2 text-slate-400">{item.unit}</td>
+                            <td className="py-1 text-right text-slate-500">{item.unitPrice ? `$${item.unitPrice.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"}</td>
+                            <td className="py-1 text-right text-slate-600 font-medium">{sub ? `$${sub.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"}</td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
+                  {totalCost(reqItems) > 0 && (
+                    <div className="text-right text-xs font-semibold text-slate-700 mt-2 pt-2 border-t border-slate-100">
+                      Total estimado: ${totalCost(reqItems).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
