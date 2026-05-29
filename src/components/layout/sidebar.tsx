@@ -9,6 +9,7 @@ import {
   LayoutDashboard, Users, Clock, FolderOpen,
   Wrench, HardHat, LogOut, GanttChartSquare, Settings, Receipt,
   CalendarDays, ClipboardList, UserCheck, Palmtree, Star, UserPlus, BarChart3, FileDown,
+  TrendingUp, Truck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -48,6 +49,7 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
           { label: "Gantt global", href: "/dashboard/gantt", icon: GanttChartSquare },
           { label: "Herramientas y Equipos", href: "/dashboard/herramientas", icon: Wrench },
           { label: "Vales", href: "/dashboard/vales", icon: Receipt },
+          { label: "Logistica", href: "/dashboard/logistica", icon: Truck },
         ],
       },
       {
@@ -57,6 +59,12 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
           { label: "Vacaciones", href: "/dashboard/vacaciones", icon: Palmtree },
           { label: "Banco de Horas", href: "/dashboard/horas", icon: Clock },
           { label: "DC3 y EPP", href: "/dashboard/dc3", icon: HardHat },
+        ],
+      },
+      {
+        title: "Ventas",
+        items: [
+          { label: "Pipeline", href: "/dashboard/ventas", icon: TrendingUp },
         ],
       },
       {
@@ -107,7 +115,14 @@ function getMenuByDepartment(dept: string, role: string): NavSection[] {
       {
         title: "Ventas",
         items: [
+          { label: "Pipeline de ventas", href: "/dashboard/ventas", icon: TrendingUp },
           { label: "Encuestas clientes", href: "/dashboard/encuestas", icon: Star },
+        ],
+      },
+      {
+        title: "Logistica",
+        items: [
+          { label: "Vehiculos", href: "/dashboard/logistica", icon: Truck },
         ],
       },
       {
