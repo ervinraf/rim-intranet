@@ -644,7 +644,12 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
                       className="flex items-center gap-2 text-left flex-1 min-w-0"
                       onClick={() => setExpandedTask(expandedTask === task.id ? null : task.id)}
                     >
-                      <span className="text-sm font-medium text-slate-800 truncate">{task.name}</span>
+                      <div className="min-w-0">
+                        <span className="text-sm font-medium text-slate-800 truncate block">{task.name}</span>
+                        {task.description && (
+                          <span className="text-xs text-slate-500 truncate block">{task.description}</span>
+                        )}
+                      </div>
                       <Badge variant="secondary" className="text-xs flex-shrink-0">{task.photos.length} fotos</Badge>
                       {task.actualEndDate ? (
                         <span className="text-xs font-medium text-emerald-600 flex-shrink-0">Completada</span>

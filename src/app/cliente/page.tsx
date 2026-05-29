@@ -116,8 +116,11 @@ export default async function ClientPortalPage({
               tasks={project.tasks.map((t) => ({
                 id: t.id,
                 name: t.name,
+                description: t.description ?? undefined,
                 startDate: t.startDate.toISOString(),
                 endDate: t.endDate.toISOString(),
+                actualStartDate: t.actualStartDate?.toISOString() ?? null,
+                actualEndDate: t.actualEndDate?.toISOString() ?? null,
                 progress: t.progress,
                 color: t.color,
               }))}

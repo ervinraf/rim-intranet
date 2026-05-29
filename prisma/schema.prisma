@@ -109,6 +109,7 @@ model Employee {
   toolCheckouts     ToolCheckout[]
   vales              Vale[]
   valesApproved      Vale[]               @relation("ValeApprover")
+  vehiclesAssigned   Vehicle[]
   attendance         Attendance[]
   vacationRequests   VacationRequest[]
   vacationsApproved  VacationRequest[]    @relation("VacationApprover")
@@ -851,6 +852,138 @@ model CheckListItem {
 
   @@index([checkListId], map: "CheckListItem_checkListId_fkey")
   @@index([completedById], map: "CheckListItem_completedById_fkey")
+}
+
+// ── VENTAS ──────────────────────────────────────────────────────────────────
+
+model SalesProject {
+  id              String        @id @default(cuid())
+  name            String
+  clientName      String
+  concept         String?       @db.Text
+  status          SalesStatus   @default(NUEVO)
+  servicePrice    Decimal?      @db.Decimal(12, 2)
+  invoiceNumber   String?
+  invoiceDate     DateTime?
+  paymentType     PaymentType   @default(CREDITO)
+  advanceAmount   Decimal?      @db.Decimal(12, 2)
+  promiseDate     DateTime?
+  notes           String?       @db.Text
+  createdById     String
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  payments        SalesPayment[]
+}
+
+model SalesPayment {
+  id             String       @id @default(cuid())
+  salesProjectId String
+  amount         Decimal      @db.Decimal(12, 2)
+  date           DateTime
+  concept        String?
+  createdAt      DateTime     @default(now())
+  salesProject   SalesProject @relation(fields: [salesProjectId], references: [id], onDelete: Cascade)
+
+  @@index([salesProjectId])
+}
+
+enum SalesStatus {
+  NUEVO
+  EN_DESARROLLO
+  CONCLUIDO
+}
+
+enum PaymentType {
+  CREDITO
+  ANTICIPO
+  CONTADO
+}
+
+// ── LOGISTICA ────────────────────────────────────────────────────────────────
+
+model Vehicle {
+  id           String        @id @default(cuid())
+  brand        String
+  model        String
+  year         Int?
+  plates       String?
+  permit       String?
+  driverId     String?
+  status       VehicleStatus @default(DISPONIBLE)
+  isActive     Boolean       @default(true)
+  notes        String?       @db.Text
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  driver       Employee?     @relation(fields: [driverId], references: [id])
+  maintenanceLogs VehicleMaintenanceLog[]
+  checklists   VehicleChecklist[]
+
+  @@index([driverId])
+}
+
+model VehicleMaintenanceLog {
+  id          String          @id @default(cuid())
+  vehicleId   String
+  type        VehicleLogType
+  description String          @db.Text
+  cost        Decimal?        @db.Decimal(10, 2)
+  date        DateTime
+  technician  String?
+  notes       String?         @db.Text
+  createdById String
+  createdAt   DateTime        @default(now())
+  vehicle     Vehicle         @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+}
+
+model VehicleChecklist {
+  id           String                @id @default(cuid())
+  vehicleId    String
+  driverId     String?
+  filledById   String
+  date         DateTime
+  observations String?               @db.Text
+  createdAt    DateTime              @default(now())
+  vehicle      Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  items        VehicleChecklistItem[]
+
+  @@index([vehicleId])
+}
+
+model VehicleChecklistItem {
+  id          String          @id @default(cuid())
+  checklistId String
+  category    String
+  description String
+  status      VehicleItemStatus @default(OK)
+  notes       String?
+  order       Int             @default(0)
+  checklist   VehicleChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId])
+}
+
+enum VehicleStatus {
+  DISPONIBLE
+  EN_RUTA
+  EN_MANTENIMIENTO
+  BAJA
+}
+
+enum VehicleLogType {
+  PREVENTIVO
+  CORRECTIVO
+  REVISION
+  INCIDENCIA
+}
+
+enum VehicleItemStatus {
+  OK
+  REQUIERE_ATENCION
+  FALLA
+  NO_APLICA
 }
 
 model ClientSurvey {

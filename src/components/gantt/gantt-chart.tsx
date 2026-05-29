@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 interface Task {
   id: string
   name: string
+  description?: string | null
   startDate: string
   endDate: string
   actualStartDate?: string | null
@@ -208,6 +209,9 @@ export function GanttChart({
                   <div className={cn("w-2 h-2 rounded-full flex-shrink-0", colorClass)} />
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-slate-800 truncate">{task.name}</p>
+                    {task.description && (
+                      <p className="text-xs text-slate-500 truncate leading-tight">{task.description}</p>
+                    )}
                     <p className="text-xs text-slate-400">{task.progress}%</p>
                     {hasActual && actualLabel && (
                       <p className={cn(
@@ -246,6 +250,7 @@ export function GanttChart({
                 {/* Plan bar */}
                 <div
                   className="absolute rounded-md overflow-hidden"
+                  title={task.description ?? undefined}
                   style={{
                     left: planStyle.left,
                     width: planStyle.width,
