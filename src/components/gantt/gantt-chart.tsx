@@ -24,6 +24,12 @@ interface GanttChartProps {
   readOnly?: boolean
 }
 
+// Parsea fechas ISO como fecha local (no UTC) para evitar el desfase de timezone
+function pd(s: string): Date {
+  const [y, m, d] = s.slice(0, 10).split("-").map(Number)
+  return new Date(y, m - 1, d, 12, 0, 0)
+}
+
 const TASK_COLORS = [
   "bg-blue-500",
   "bg-emerald-500",
@@ -45,18 +51,18 @@ export function GanttChart({
   onProgressChange,
   readOnly = false,
 }: GanttChartProps) {
-  const start = startOfDay(new Date(projectStart))
+  const start = startOfDay(pd(projectStart))
   const end = projectEnd
-    ? startOfDay(new Date(projectEnd))
+    ? startOfDay(pd(projectEnd))
     : addDays(
         tasks.reduce(
           (max, t) => {
-            const dates = [new Date(t.endDate)]
-            if (t.actualEndDate) dates.push(new Date(t.actualEndDate))
+            const dates = [pd(t.endDate)]
+            if (t.actualEndDate) dates.push(pd(t.actualEndDate))
             const latest = dates.reduce((a, b) => (b > a ? b : a))
             return latest > max ? latest : max
           },
-          new Date(projectStart)
+          pd(projectStart)
         ),
         14
       )
@@ -87,8 +93,8 @@ export function GanttChart({
   const totalWidth = totalDays * CELL_WIDTH
 
   function getBarStyle(dateStart: string, dateEnd: string) {
-    const s = startOfDay(new Date(dateStart))
-    const e = startOfDay(new Date(dateEnd))
+    const s = startOfDay(pd(dateStart))
+    const e = startOfDay(pd(dateEnd))
     const left = differenceInDays(s, start) * CELL_WIDTH
     const width = Math.max((differenceInDays(e, s) + 1) * CELL_WIDTH, CELL_WIDTH)
     return { left, width }
@@ -96,10 +102,10 @@ export function GanttChart({
 
   function getActualColor(task: Task) {
     if (!task.actualEndDate) return "bg-slate-400"
-    const plannedEnd = startOfDay(new Date(task.endDate))
-    const actualEnd = startOfDay(new Date(task.actualEndDate))
-    const actualStart = task.actualStartDate ? startOfDay(new Date(task.actualStartDate)) : null
-    const plannedStart = startOfDay(new Date(task.startDate))
+    const plannedEnd = startOfDay(pd(task.endDate))
+    const actualEnd = startOfDay(pd(task.actualEndDate))
+    const actualStart = task.actualStartDate ? startOfDay(pd(task.actualStartDate)) : null
+    const plannedStart = startOfDay(pd(task.startDate))
 
     if (actualStart && actualStart < plannedStart) return "bg-yellow-400"
     if (actualEnd <= plannedEnd) return "bg-emerald-500"
@@ -108,8 +114,8 @@ export function GanttChart({
 
   function getActualLabel(task: Task) {
     if (!task.actualEndDate) return null
-    const plannedEnd = startOfDay(new Date(task.endDate))
-    const actualEnd = startOfDay(new Date(task.actualEndDate))
+    const plannedEnd = startOfDay(pd(task.endDate))
+    const actualEnd = startOfDay(pd(task.actualEndDate))
     const diff = differenceInDays(actualEnd, plannedEnd)
     if (diff === 0) return "A tiempo"
     if (diff > 0) return `+${diff}d`
