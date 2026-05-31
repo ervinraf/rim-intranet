@@ -453,17 +453,26 @@ export function VentasClient({ projects: initial, isAdmin }: Props) {
                         </div>
                       )}
                       {isAdmin && (
-                        <>
-                          <button className="p-1 text-slate-400 hover:text-slate-700 rounded" onClick={(e) => { e.stopPropagation(); printProject(p) }} title="Imprimir">
-                            <Download className="w-3.5 h-3.5" />
+                        <div className="flex gap-1.5">
+                          <button
+                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); printProject(p) }}
+                          >
+                            <Download className="w-3 h-3" />Imprimir
                           </button>
-                          <button className="p-1 text-slate-400 hover:text-slate-700 rounded" onClick={(e) => { e.stopPropagation(); startEdit(p) }} title="Editar">
-                            <Pencil className="w-3.5 h-3.5" />
+                          <button
+                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); startEdit(p) }}
+                          >
+                            <Pencil className="w-3 h-3" />Editar
                           </button>
-                          <button className="p-1 text-slate-400 hover:text-red-600 rounded" onClick={(e) => { e.stopPropagation(); deleteProject(p.id) }} title="Archivar">
-                            <Trash2 className="w-3.5 h-3.5" />
+                          <button
+                            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); deleteProject(p.id) }}
+                          >
+                            <Trash2 className="w-3 h-3" />Archivar
                           </button>
-                        </>
+                        </div>
                       )}
                       {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                     </div>

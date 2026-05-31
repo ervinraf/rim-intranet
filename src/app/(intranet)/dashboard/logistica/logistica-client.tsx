@@ -448,17 +448,26 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
                   </div>
                   <div className="flex items-center gap-2 ml-3 flex-shrink-0">
                     {isAdmin && (
-                      <>
-                        <button className="p-1.5 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-100" onClick={(e) => { e.stopPropagation(); openEdit(v) }} title="Editar">
-                          <Pencil className="w-3.5 h-3.5" />
+                      <div className="flex gap-1.5">
+                        <button
+                          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+                          onClick={(e) => { e.stopPropagation(); openEdit(v) }}
+                        >
+                          <Pencil className="w-3 h-3" />Editar
                         </button>
-                        <button className="p-1.5 text-slate-400 hover:text-amber-600 rounded hover:bg-amber-50" onClick={(e) => { e.stopPropagation(); setLogModal(v) }} title="Agregar a bitacora">
-                          <Wrench className="w-3.5 h-3.5" />
+                        <button
+                          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors"
+                          onClick={(e) => { e.stopPropagation(); setLogModal(v) }}
+                        >
+                          <Wrench className="w-3 h-3" />Bitacora
                         </button>
-                        <button className="p-1.5 text-slate-400 hover:text-blue-600 rounded hover:bg-blue-50" onClick={(e) => { e.stopPropagation(); setChecklistModal(v) }} title="Llenar checklist">
-                          <ClipboardList className="w-3.5 h-3.5" />
+                        <button
+                          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                          onClick={(e) => { e.stopPropagation(); setChecklistModal(v) }}
+                        >
+                          <ClipboardList className="w-3 h-3" />Checklist
                         </button>
-                      </>
+                      </div>
                     )}
                     {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                   </div>
