@@ -104,6 +104,7 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
   const [savingProject, setSavingProject] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [exportingPng, setExportingPng] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
   const ganttRef = useRef<HTMLDivElement>(null)
 
   const exportGanttPng = useCallback(async () => {
@@ -153,9 +154,63 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
     setTimeout(() => { setEmailModal(false); setEmailSent(false) }, 2000)
   }
 
-  function downloadPDF() {
-    window.open(`/api/projects/${project.id}/pdf`, "_blank")
-  }
+  const downloadPDF = useCallback(async () => {
+    const el = ganttRef.current
+    if (!el || tasks.length === 0) {
+      alert("No hay actividades en el Gantt para exportar.")
+      return
+    }
+    setExportingPdf(true)
+    try {
+      const { toPng } = await import("html-to-image")
+      const dataUrl = await toPng(el, {
+        backgroundColor: "#ffffff",
+        pixelRatio: 2,
+        width: el.scrollWidth,
+        height: el.scrollHeight,
+        style: { overflow: "visible", width: el.scrollWidth + "px", height: el.scrollHeight + "px" },
+      })
+      const statusLabel = { NUEVO: "Nuevo", EN_DESARROLLO: "En desarrollo", CERRADO: "Cerrado" }[project.status] ?? project.status
+      const start = new Date(project.startDate).toLocaleDateString("es-MX")
+      const end = project.endDate ? new Date(project.endDate).toLocaleDateString("es-MX") : null
+      const periodo = end ? `${start} — ${end}` : start
+      const hoy = new Date().toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" })
+
+      const pw = window.open("", "_blank")
+      if (!pw) { alert("Activa las ventanas emergentes para exportar el PDF."); return }
+      pw.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Gantt – ${project.name}</title><style>
+        @page{margin:12mm;size:A4 landscape}*{box-sizing:border-box}
+        body{margin:0;padding:0;font-family:Arial,sans-serif;color:#1e293b}
+        .hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #f59e0b;padding-bottom:10px;margin-bottom:12px}
+        h1{font-size:18px;font-weight:bold;margin:0 0 4px}
+        .meta{font-size:11px;color:#475569;margin:2px 0}
+        .badge{display:inline-block;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:bold;margin-top:4px}
+        .pct{font-size:12px;color:#64748b;text-align:right}.pct strong{font-size:22px;color:#f59e0b;display:block}
+        img{width:100%;height:auto;display:block}
+        .ftr{margin-top:10px;border-top:1px solid #e2e8f0;padding-top:6px;display:flex;justify-content:space-between;font-size:9px;color:#94a3b8}
+      </style></head><body>
+        <div class="hdr">
+          <div>
+            <h1>${project.name}</h1>
+            <p class="meta">Cliente: ${project.clientName}</p>
+            ${project.location ? `<p class="meta">Ubicaci&oacute;n: ${project.location}</p>` : ""}
+            <p class="meta">Periodo: ${periodo}</p>
+            <span class="badge">${statusLabel}</span>
+          </div>
+          <div class="pct"><strong>${project.progress}%</strong>completado</div>
+        </div>
+        <img src="${dataUrl}" />
+        <div class="ftr">
+          <span>RIM Rigging Industrial de M&eacute;xico</span>
+          <span>Generado: ${hoy}</span>
+        </div>
+        <script>setTimeout(()=>{window.print()},400)</script>
+      </body></html>`)
+      pw.document.close()
+    } finally {
+      setExportingPdf(false)
+    }
+  }, [project, tasks.length])
 
   function startEditTask(task: Task) {
     setEditingTask(task.id)
@@ -431,9 +486,9 @@ export function ProjectDetailClient({ project: initial, isAdmin }: ProjectDetail
               <Settings className="w-4 h-4 mr-1.5" />
               Editar proyecto
             </Button>
-            <Button variant="outline" size="sm" onClick={downloadPDF}>
+            <Button variant="outline" size="sm" onClick={downloadPDF} disabled={exportingPdf}>
               <FileDown className="w-4 h-4 mr-1.5" />
-              PDF
+              {exportingPdf ? "Generando..." : "PDF"}
             </Button>
             <Button variant="outline" size="sm" onClick={shareWhatsApp} className="text-green-700 border-green-300 hover:bg-green-50">
               <MessageCircle className="w-4 h-4 mr-1.5" />
