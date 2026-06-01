@@ -84,6 +84,11 @@ interface Vehicle {
   id: string; brand: string; model: string; year?: number | null
   plates?: string | null; permit?: string | null
   status: VehicleStatus; notes?: string | null
+  verificacionFecha?: string | null
+  verificacionVigencia?: string | null
+  tenenciaAnio?: number | null
+  tenenciaFechaPago?: string | null
+  tenenciaMonto?: number | null
   driver?: { id: string; fullName: string; licenciaNumero?: string | null; licenciaVencimiento?: string | null } | null
   maintenanceLogs: MaintenanceLog[]
   checklists: Checklist[]
@@ -114,6 +119,8 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
 
   const [editForm, setEditForm] = useState({
     brand: "", model: "", year: "", plates: "", permit: "", driverId: "", status: "DISPONIBLE" as VehicleStatus, notes: "",
+    verificacionFecha: "", verificacionVigencia: "",
+    tenenciaAnio: "", tenenciaFechaPago: "", tenenciaMonto: "",
   })
 
   const [logForm, setLogForm] = useState({
@@ -146,6 +153,21 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
     return differenceInDays(new Date(date), new Date()) <= 30 && !licenciaVencida(date)
   }
 
+  function verificacionVencida(date?: string | null) {
+    if (!date) return false
+    return new Date(date) < new Date()
+  }
+
+  function verificacionPorVencer(date?: string | null) {
+    if (!date) return false
+    return differenceInDays(new Date(date), new Date()) <= 30 && !verificacionVencida(date)
+  }
+
+  function tenenciaPendiente(anio?: number | null) {
+    if (!anio) return false
+    return anio < new Date().getFullYear()
+  }
+
   async function addVehicle() {
     setLoading(true)
     const res = await fetch("/api/logistica/vehicles", {
@@ -167,6 +189,11 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
       brand: v.brand, model: v.model, year: v.year ? String(v.year) : "",
       plates: v.plates ?? "", permit: v.permit ?? "", driverId: v.driver?.id ?? "",
       status: v.status, notes: v.notes ?? "",
+      verificacionFecha: v.verificacionFecha?.slice(0, 10) ?? "",
+      verificacionVigencia: v.verificacionVigencia?.slice(0, 10) ?? "",
+      tenenciaAnio: v.tenenciaAnio ? String(v.tenenciaAnio) : "",
+      tenenciaFechaPago: v.tenenciaFechaPago?.slice(0, 10) ?? "",
+      tenenciaMonto: v.tenenciaMonto ? String(v.tenenciaMonto) : "",
     })
     setEditModal(v)
   }
@@ -418,6 +445,9 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
             const section = expandedSection[v.id] ?? "bitacora"
             const licVencida = licenciaVencida(v.driver?.licenciaVencimiento)
             const licPorVencer = licenciaPorVencer(v.driver?.licenciaVencimiento)
+            const verVencida = verificacionVencida(v.verificacionVigencia)
+            const verPorVencer = verificacionPorVencer(v.verificacionVigencia)
+            const tenPendiente = tenenciaPendiente(v.tenenciaAnio)
 
             return (
               <div key={v.id} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -438,6 +468,9 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${st.color}`}>{st.label}</span>
                         {licVencida && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Licencia vencida</span>}
                         {licPorVencer && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Licencia por vencer</span>}
+                        {verVencida && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Verificacion vencida</span>}
+                        {verPorVencer && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Verificacion por vencer</span>}
+                        {tenPendiente && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Tenencia {v.tenenciaAnio}</span>}
                       </div>
                       <p className="text-xs text-slate-400 mt-0.5">
                         {v.plates && `Placas: ${v.plates}`}
@@ -481,7 +514,7 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
                       {[
                         { id: "bitacora", label: "Bitacora de mantenimiento" },
                         { id: "checklists", label: "Checklists" },
-                        { id: "chofer", label: "Datos del chofer" },
+                        { id: "chofer", label: "Chofer y documentos" },
                       ].map((s) => (
                         <button
                           key={s.id}
@@ -557,37 +590,87 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
                         </div>
                       )}
 
-                      {/* Chofer */}
+                      {/* Chofer y documentos */}
                       {section === "chofer" && (
-                        <div className="space-y-3">
-                          {!v.driver ? (
-                            <p className="text-sm text-slate-400 py-4 text-center">Sin chofer asignado</p>
-                          ) : (
+                        <div className="space-y-4">
+                          {/* Chofer */}
+                          <div>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Chofer asignado</p>
+                            {!v.driver ? (
+                              <p className="text-sm text-slate-400">Sin chofer asignado</p>
+                            ) : (
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-slate-50 rounded-lg p-3">
+                                  <p className="text-xs text-slate-400">Chofer</p>
+                                  <p className="text-sm font-semibold text-slate-800 mt-0.5">{v.driver.fullName}</p>
+                                </div>
+                                <div className="bg-slate-50 rounded-lg p-3">
+                                  <p className="text-xs text-slate-400">No. Licencia</p>
+                                  <p className="text-sm font-semibold text-slate-800 mt-0.5">{v.driver.licenciaNumero ?? "—"}</p>
+                                </div>
+                                <div className={`rounded-lg p-3 col-span-2 ${licVencida ? "bg-red-50" : licPorVencer ? "bg-amber-50" : "bg-slate-50"}`}>
+                                  <p className="text-xs text-slate-400">Vencimiento licencia</p>
+                                  <p className={`text-sm font-semibold mt-0.5 ${licVencida ? "text-red-600" : licPorVencer ? "text-amber-600" : "text-slate-800"}`}>
+                                    {v.driver.licenciaVencimiento
+                                      ? format(new Date(v.driver.licenciaVencimiento), "d MMM yyyy", { locale: es })
+                                      : "—"}
+                                    {licVencida && " · VENCIDA"}
+                                    {licPorVencer && ` · vence en ${differenceInDays(new Date(v.driver.licenciaVencimiento!), new Date())} dias`}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          {/* Verificacion */}
+                          <div>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Verificacion vehicular</p>
                             <div className="grid grid-cols-2 gap-3">
                               <div className="bg-slate-50 rounded-lg p-3">
-                                <p className="text-xs text-slate-400">Chofer</p>
-                                <p className="text-sm font-semibold text-slate-800 mt-0.5">{v.driver.fullName}</p>
+                                <p className="text-xs text-slate-400">Ultima verificacion</p>
+                                <p className="text-sm font-semibold text-slate-800 mt-0.5">
+                                  {v.verificacionFecha ? format(new Date(v.verificacionFecha), "d MMM yyyy", { locale: es }) : "—"}
+                                </p>
                               </div>
-                              <div className="bg-slate-50 rounded-lg p-3">
-                                <p className="text-xs text-slate-400">No. Licencia</p>
-                                <p className="text-sm font-semibold text-slate-800 mt-0.5">{v.driver.licenciaNumero ?? "—"}</p>
+                              <div className={`rounded-lg p-3 ${verVencida ? "bg-red-50" : verPorVencer ? "bg-amber-50" : "bg-slate-50"}`}>
+                                <p className="text-xs text-slate-400">Vigencia</p>
+                                <p className={`text-sm font-semibold mt-0.5 ${verVencida ? "text-red-600" : verPorVencer ? "text-amber-600" : "text-slate-800"}`}>
+                                  {v.verificacionVigencia ? format(new Date(v.verificacionVigencia), "d MMM yyyy", { locale: es }) : "—"}
+                                  {verVencida && " · VENCIDA"}
+                                  {verPorVencer && v.verificacionVigencia && ` · vence en ${differenceInDays(new Date(v.verificacionVigencia), new Date())} dias`}
+                                </p>
                               </div>
-                              <div className={`rounded-lg p-3 ${licVencida ? "bg-red-50" : licPorVencer ? "bg-amber-50" : "bg-slate-50"}`}>
-                                <p className="text-xs text-slate-400">Vencimiento licencia</p>
-                                <p className={`text-sm font-semibold mt-0.5 ${licVencida ? "text-red-600" : licPorVencer ? "text-amber-600" : "text-slate-800"}`}>
-                                  {v.driver.licenciaVencimiento
-                                    ? format(new Date(v.driver.licenciaVencimiento), "d MMM yyyy", { locale: es })
-                                    : "—"}
-                                  {licVencida && " · VENCIDA"}
-                                  {licPorVencer && ` · vence en ${differenceInDays(new Date(v.driver.licenciaVencimiento!), new Date())} dias`}
+                            </div>
+                          </div>
+                          {/* Tenencia */}
+                          <div>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Tenencia</p>
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className={`rounded-lg p-3 ${tenPendiente ? "bg-orange-50" : "bg-slate-50"}`}>
+                                <p className="text-xs text-slate-400">Ano pagado</p>
+                                <p className={`text-sm font-semibold mt-0.5 ${tenPendiente ? "text-orange-600" : "text-slate-800"}`}>
+                                  {v.tenenciaAnio ?? "—"}
+                                  {tenPendiente && " · PENDIENTE"}
                                 </p>
                               </div>
                               <div className="bg-slate-50 rounded-lg p-3">
-                                <p className="text-xs text-slate-400">Permiso de circulacion</p>
-                                <p className="text-sm font-semibold text-slate-800 mt-0.5">{v.permit ?? "—"}</p>
+                                <p className="text-xs text-slate-400">Fecha de pago</p>
+                                <p className="text-sm font-semibold text-slate-800 mt-0.5">
+                                  {v.tenenciaFechaPago ? format(new Date(v.tenenciaFechaPago), "d MMM yyyy", { locale: es }) : "—"}
+                                </p>
+                              </div>
+                              <div className="bg-slate-50 rounded-lg p-3">
+                                <p className="text-xs text-slate-400">Monto ($)</p>
+                                <p className="text-sm font-semibold text-slate-800 mt-0.5">
+                                  {v.tenenciaMonto ? `$${Number(v.tenenciaMonto).toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"}
+                                </p>
                               </div>
                             </div>
-                          )}
+                          </div>
+                          {/* Permiso */}
+                          <div className="bg-slate-50 rounded-lg p-3">
+                            <p className="text-xs text-slate-400">Permiso de circulacion</p>
+                            <p className="text-sm font-semibold text-slate-800 mt-0.5">{v.permit ?? "—"}</p>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -665,6 +748,32 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
                     {employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.fullName}</SelectItem>)}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="col-span-2 pt-1 border-t border-slate-100">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Verificacion vehicular</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fecha de verificacion</Label>
+                <Input type="date" value={editForm.verificacionFecha} onChange={(e) => setEditForm((p) => ({ ...p, verificacionFecha: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Vigencia (vencimiento)</Label>
+                <Input type="date" value={editForm.verificacionVigencia} onChange={(e) => setEditForm((p) => ({ ...p, verificacionVigencia: e.target.value }))} />
+              </div>
+              <div className="col-span-2 pt-1 border-t border-slate-100">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Tenencia</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Ano pagado</Label>
+                <Input type="number" min="2000" max="2099" placeholder={String(new Date().getFullYear())} value={editForm.tenenciaAnio} onChange={(e) => setEditForm((p) => ({ ...p, tenenciaAnio: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fecha de pago</Label>
+                <Input type="date" value={editForm.tenenciaFechaPago} onChange={(e) => setEditForm((p) => ({ ...p, tenenciaFechaPago: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Monto ($)</Label>
+                <Input type="number" step="0.01" min="0" placeholder="0.00" value={editForm.tenenciaMonto} onChange={(e) => setEditForm((p) => ({ ...p, tenenciaMonto: e.target.value }))} />
               </div>
             </div>
             <div className="flex gap-2 px-6 py-4 border-t border-slate-200">
