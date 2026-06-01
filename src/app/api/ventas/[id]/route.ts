@@ -12,7 +12,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params
   const body = await req.json()
   const { name, clientName, concept, status, servicePrice, invoiceNumber, invoiceDate,
-          paymentType, advanceAmount, promiseDate, notes } = body
+          paymentType, advanceAmount, promiseDate, notes,
+          entrevistaFecha, entrevistaNotas } = body
 
   const updated = await prisma.salesProject.update({
     where: { id },
@@ -28,6 +29,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(advanceAmount !== undefined && { advanceAmount: advanceAmount ? parseFloat(advanceAmount) : null }),
       ...(promiseDate !== undefined && { promiseDate: promiseDate ? new Date(promiseDate) : null }),
       ...(notes !== undefined && { notes: notes?.trim() || null }),
+      ...(entrevistaFecha !== undefined && { entrevistaFecha: entrevistaFecha ? new Date(entrevistaFecha) : null }),
+      ...(entrevistaNotas !== undefined && { entrevistaNotas: entrevistaNotas?.trim() || null }),
     },
     include: { payments: { orderBy: { date: "desc" } } },
   })

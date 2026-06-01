@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -13,6 +13,7 @@ import {
 import {
   Plus, Search, TrendingUp, DollarSign, Clock, CheckCircle2,
   ChevronDown, ChevronUp, Pencil, Trash2, X, Check, Download,
+  FileUp, FileText, ExternalLink, Users,
 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -46,6 +47,10 @@ interface SalesProject {
   advanceAmount?: number | null
   promiseDate?: string | null
   notes?: string | null
+  entrevistaFecha?: string | null
+  entrevistaNotas?: string | null
+  entrevistaFileUrl?: string | null
+  entrevistaFileName?: string | null
   createdAt: string
   payments: Payment[]
 }
@@ -73,6 +78,11 @@ export function VentasClient({ projects: initial, isAdmin }: Props) {
   const [editForm, setEditForm] = useState(emptyForm())
   const [paymentForm, setPaymentForm] = useState({ amount: "", date: new Date().toISOString().slice(0, 10), concept: "" })
   const [addingPaymentId, setAddingPaymentId] = useState<string | null>(null)
+  const [entrevistaEditId, setEntrevistaEditId] = useState<string | null>(null)
+  const [entrevistaForm, setEntrevistaForm] = useState({ fecha: "", notas: "" })
+  const [uploadingEntrevistaId, setUploadingEntrevistaId] = useState<string | null>(null)
+  const entrevistaFileRef = useRef<HTMLInputElement>(null)
+  const entrevistaTargetId = useRef<string | null>(null)
 
   const filtered = useMemo(() =>
     projects.filter((p) => {
@@ -178,6 +188,50 @@ export function VentasClient({ projects: initial, isAdmin }: Props) {
     await fetch(`/api/ventas/${projectId}/payments?paymentId=${paymentId}`, { method: "DELETE" })
     setProjects((prev) => prev.map((p) =>
       p.id === projectId ? { ...p, payments: p.payments.filter((pay) => pay.id !== paymentId) } : p
+    ))
+  }
+
+  async function saveEntrevista(projectId: string) {
+    setLoading(true)
+    const res = await fetch(`/api/ventas/${projectId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        entrevistaFecha: entrevistaForm.fecha || null,
+        entrevistaNotas: entrevistaForm.notas || null,
+      }),
+    })
+    if (res.ok) {
+      const updated = await res.json()
+      setProjects((prev) => prev.map((p) => p.id === projectId ? updated : p))
+      setEntrevistaEditId(null)
+    }
+    setLoading(false)
+  }
+
+  async function handleEntrevistaUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    const projectId = entrevistaTargetId.current
+    if (!file || !projectId) return
+    setUploadingEntrevistaId(projectId)
+    const fd = new FormData()
+    fd.append("file", file)
+    const res = await fetch(`/api/ventas/${projectId}/entrevista`, { method: "POST", body: fd })
+    if (res.ok) {
+      const { url, fileName } = await res.json()
+      setProjects((prev) => prev.map((p) =>
+        p.id === projectId ? { ...p, entrevistaFileUrl: url, entrevistaFileName: fileName } : p
+      ))
+    }
+    setUploadingEntrevistaId(null)
+    entrevistaTargetId.current = null
+    e.target.value = ""
+  }
+
+  async function deleteEntrevistaFile(projectId: string) {
+    await fetch(`/api/ventas/${projectId}/entrevista`, { method: "DELETE" })
+    setProjects((prev) => prev.map((p) =>
+      p.id === projectId ? { ...p, entrevistaFileUrl: null, entrevistaFileName: null } : p
     ))
   }
 
@@ -309,6 +363,13 @@ export function VentasClient({ projects: initial, isAdmin }: Props) {
 
   return (
     <div className="p-6 space-y-5">
+      <input
+        type="file"
+        accept=".pdf,.doc,.docx,image/*"
+        className="hidden"
+        ref={entrevistaFileRef}
+        onChange={handleEntrevistaUpload}
+      />
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -566,6 +627,112 @@ export function VentasClient({ projects: initial, isAdmin }: Props) {
                             ))}
                           </div>
                         )}
+                      </div>
+
+                      {/* Entrevista / Propuesta */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5" />Entrevista / Propuesta
+                          </p>
+                          {isAdmin && entrevistaEditId !== p.id && (
+                            <button
+                              className="text-xs text-blue-600 hover:text-blue-800"
+                              onClick={() => {
+                                setEntrevistaEditId(p.id)
+                                setEntrevistaForm({
+                                  fecha: p.entrevistaFecha?.slice(0, 10) ?? "",
+                                  notas: p.entrevistaNotas ?? "",
+                                })
+                              }}
+                            >
+                              {p.entrevistaFecha || p.entrevistaNotas ? "Editar" : "+ Registrar"}
+                            </button>
+                          )}
+                        </div>
+
+                        {entrevistaEditId === p.id ? (
+                          <div className="bg-blue-50 rounded-lg p-3 space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <label className="text-xs text-slate-500">Fecha de reunion</label>
+                                <input
+                                  type="date"
+                                  className="w-full border border-slate-200 rounded px-2 py-1 text-sm"
+                                  value={entrevistaForm.fecha}
+                                  onChange={(e) => setEntrevistaForm((f) => ({ ...f, fecha: e.target.value }))}
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs text-slate-500">Notas de la entrevista</label>
+                              <textarea
+                                rows={3}
+                                className="w-full border border-slate-200 rounded px-2 py-1 text-sm resize-none"
+                                placeholder="Puntos tratados, compromisos, seguimiento..."
+                                value={entrevistaForm.notas}
+                                onChange={(e) => setEntrevistaForm((f) => ({ ...f, notas: e.target.value }))}
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                className="flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-lg bg-slate-900 text-white hover:bg-slate-700 disabled:opacity-50"
+                                onClick={() => saveEntrevista(p.id)}
+                                disabled={loading}
+                              >
+                                <Check className="w-3 h-3" />{loading ? "Guardando..." : "Guardar"}
+                              </button>
+                              <button
+                                className="text-xs text-slate-500 hover:text-slate-700 px-2"
+                                onClick={() => setEntrevistaEditId(null)}
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (p.entrevistaFecha || p.entrevistaNotas) ? (
+                          <div className="bg-slate-50 rounded-lg px-3 py-2 space-y-1.5">
+                            {p.entrevistaFecha && (
+                              <p className="text-xs text-slate-500">
+                                Reunion: <span className="font-medium text-slate-700">
+                                  {format(new Date(p.entrevistaFecha), "d 'de' MMMM yyyy", { locale: es })}
+                                </span>
+                              </p>
+                            )}
+                            {p.entrevistaNotas && (
+                              <p className="text-xs text-slate-600 whitespace-pre-line">{p.entrevistaNotas}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-400">Sin registro de entrevista</p>
+                        )}
+
+                        {/* Documento firmado */}
+                        <div className="mt-2">
+                          {p.entrevistaFileUrl ? (
+                            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                              <FileText className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                              <span className="text-xs text-slate-700 flex-1 truncate">{p.entrevistaFileName}</span>
+                              <a href={p.entrevistaFileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                              {isAdmin && (
+                                <button onClick={() => deleteEntrevistaFile(p.id)} className="text-slate-400 hover:text-red-600">
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          ) : isAdmin ? (
+                            <button
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors disabled:opacity-50"
+                              disabled={uploadingEntrevistaId === p.id}
+                              onClick={() => { entrevistaTargetId.current = p.id; entrevistaFileRef.current?.click() }}
+                            >
+                              <FileUp className="w-3.5 h-3.5" />
+                              {uploadingEntrevistaId === p.id ? "Subiendo..." : "Subir documento firmado"}
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   )}

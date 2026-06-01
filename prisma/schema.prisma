@@ -859,23 +859,27 @@ model CheckListItem {
 // ── VENTAS ──────────────────────────────────────────────────────────────────
 
 model SalesProject {
-  id              String        @id @default(cuid())
-  name            String
-  clientName      String
-  concept         String?       @db.Text
-  status          SalesStatus   @default(NUEVO)
-  servicePrice    Decimal?      @db.Decimal(12, 2)
-  invoiceNumber   String?
-  invoiceDate     DateTime?
-  paymentType     PaymentType   @default(CREDITO)
-  advanceAmount   Decimal?      @db.Decimal(12, 2)
-  promiseDate     DateTime?
-  notes           String?       @db.Text
-  createdById     String
-  isActive        Boolean       @default(true)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  payments        SalesPayment[]
+  id                   String        @id @default(cuid())
+  name                 String
+  clientName           String
+  concept              String?       @db.Text
+  status               SalesStatus   @default(NUEVO)
+  servicePrice         Decimal?      @db.Decimal(12, 2)
+  invoiceNumber        String?
+  invoiceDate          DateTime?
+  paymentType          PaymentType   @default(CREDITO)
+  advanceAmount        Decimal?      @db.Decimal(12, 2)
+  promiseDate          DateTime?
+  notes                String?       @db.Text
+  entrevistaFecha      DateTime?
+  entrevistaNotas      String?       @db.Text
+  entrevistaFileUrl    String?
+  entrevistaFileName   String?
+  createdById          String
+  isActive             Boolean       @default(true)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  payments             SalesPayment[]
 }
 
 model SalesPayment {
