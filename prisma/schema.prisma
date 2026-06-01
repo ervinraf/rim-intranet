@@ -487,10 +487,12 @@ model Equipment {
   location        String?
   notes           String?
   nextServiceDate  DateTime?
-  technicalSpecs   Json?
-  purchaseDate     DateTime?
-  purchasePrice    Decimal?        @db.Decimal(12, 2)
-  isActive         Boolean         @default(true)
+  technicalSpecs      Json?
+  purchaseDate        DateTime?
+  purchasePrice       Decimal?        @db.Decimal(12, 2)
+  technicalSheetUrl   String?
+  technicalSheetName  String?
+  isActive            Boolean         @default(true)
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   department      Department?     @relation(fields: [departmentId], references: [id])
@@ -918,6 +920,8 @@ model Vehicle {
   tenenciaAnio          Int?
   tenenciaFechaPago     DateTime?
   tenenciaMonto         Decimal?      @db.Decimal(10, 2)
+  technicalSheetUrl     String?
+  technicalSheetName    String?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
   driver                Employee?     @relation(fields: [driverId], references: [id])

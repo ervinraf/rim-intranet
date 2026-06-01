@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
-import { Plus, FileText, ChevronDown, ChevronUp, ClipboardList, Printer, Camera, FileSpreadsheet } from "lucide-react"
+import { Plus, FileText, ChevronDown, ChevronUp, ClipboardList, Printer, Camera, FileSpreadsheet, FileUp, ExternalLink, Trash2 } from "lucide-react"
 import { ImportInventoryModal } from "./import-inventory-modal"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -51,7 +51,9 @@ export function EquipmentTab({ equipment, departments, projects, isAdmin, search
   const [purchasePrice, setPurchasePrice] = useState("")
   const [techError, setTechError] = useState<string | null>(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [uploadingSheet, setUploadingSheet] = useState(false)
   const photoInputRef = useRef<HTMLInputElement>(null)
+  const sheetInputRef = useRef<HTMLInputElement>(null)
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -71,6 +73,33 @@ export function EquipmentTab({ equipment, departments, projects, isAdmin, search
     }
     setUploadingPhoto(false)
     e.target.value = ""
+  }
+
+  async function handleSheetUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !techModal) return
+    setUploadingSheet(true)
+    setTechError(null)
+    const fd = new FormData()
+    fd.append("file", file)
+    const res = await fetch(`/api/equipment/${techModal.id}/technical-sheet`, { method: "POST", body: fd })
+    if (res.ok) {
+      const { url, fileName } = await res.json()
+      onUpdate(equipment.map((e) => e.id === techModal.id ? { ...e, technicalSheetUrl: url, technicalSheetName: fileName } : e))
+      setTechModal((p: any) => p ? { ...p, technicalSheetUrl: url, technicalSheetName: fileName } : p)
+    } else {
+      const data = await res.json().catch(() => ({}))
+      setTechError(data.error ?? "Error al subir el archivo")
+    }
+    setUploadingSheet(false)
+    e.target.value = ""
+  }
+
+  async function deleteSheet() {
+    if (!techModal) return
+    await fetch(`/api/equipment/${techModal.id}/technical-sheet`, { method: "DELETE" })
+    onUpdate(equipment.map((e) => e.id === techModal.id ? { ...e, technicalSheetUrl: null, technicalSheetName: null } : e))
+    setTechModal((p: any) => p ? { ...p, technicalSheetUrl: null, technicalSheetName: null } : p)
   }
 
   async function saveTech() {
@@ -360,6 +389,31 @@ export function EquipmentTab({ equipment, departments, projects, isAdmin, search
                 )}
               </div>
             </div>
+              <div className="space-y-1 col-span-2 border-t border-slate-100 pt-3">
+                <Label className="text-xs">Hoja tecnica en PDF</Label>
+                <input type="file" accept=".pdf,.doc,.docx,image/*" className="hidden" ref={sheetInputRef} onChange={handleSheetUpload} />
+                {techModal.technicalSheetUrl ? (
+                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                    <FileText className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                    <span className="text-xs text-slate-700 flex-1 truncate">{techModal.technicalSheetName}</span>
+                    <a href={techModal.technicalSheetUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800">
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                    {isAdmin && (
+                      <button onClick={deleteSheet} className="text-slate-400 hover:text-red-600">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ) : isAdmin ? (
+                  <Button type="button" variant="outline" size="sm" disabled={uploadingSheet} onClick={() => sheetInputRef.current?.click()} className="h-8 text-xs">
+                    <FileUp className="w-3.5 h-3.5 mr-1.5" />
+                    {uploadingSheet ? "Subiendo..." : "Subir PDF / documento"}
+                  </Button>
+                ) : (
+                  <p className="text-xs text-slate-400">Sin documento adjunto</p>
+                )}
+              </div>
             {techError && (
               <div className="mx-6 mb-2 text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
                 {techError}
@@ -368,7 +422,7 @@ export function EquipmentTab({ equipment, departments, projects, isAdmin, search
             <div className="flex gap-2 px-6 py-4 border-t border-slate-200">
               <Button variant="outline" onClick={() => setTechModal(null)} className="flex-1">Cancelar</Button>
               {isAdmin && (
-                <Button onClick={saveTech} disabled={loading || uploadingPhoto} className="flex-1">Guardar hoja tecnica</Button>
+                <Button onClick={saveTech} disabled={loading || uploadingPhoto || uploadingSheet} className="flex-1">Guardar hoja tecnica</Button>
               )}
             </div>
           </div>
