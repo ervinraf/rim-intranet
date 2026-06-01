@@ -33,6 +33,14 @@ export default async function EmployeeProfilePage({
           where: { isExpired: false },
           select: { hoursAvailable: true, expiresAt: true, isExpired: true },
         },
+        dc3Records: {
+          where: { isActive: true },
+          orderBy: { completedAt: "desc" },
+          select: {
+            id: true, courseName: true, institution: true, hours: true,
+            completedAt: true, expiresAt: true, certificateUrl: true,
+          },
+        },
       },
     }),
     prisma.department.findMany({ where: { isActive: true }, orderBy: { name: "asc" } }),

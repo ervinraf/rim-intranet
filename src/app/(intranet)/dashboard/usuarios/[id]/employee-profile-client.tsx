@@ -6,7 +6,7 @@ import { EmployeeForm } from "@/components/employees/employee-form"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Clock, Mail, Phone, Building2, Calendar, Edit2, Power, CreditCard, Upload, AlertTriangle, Trash2 } from "lucide-react"
+import { Clock, Mail, Phone, Building2, Calendar, Edit2, Power, CreditCard, Upload, AlertTriangle, Trash2, GraduationCap, ExternalLink, CheckCircle2 } from "lucide-react"
 import { differenceInDays, isPast } from "date-fns"
 import { fmtDate, parseDate } from "@/lib/utils"
 
@@ -61,8 +61,18 @@ interface Employee {
   overtimeRecords: OvertimeRecord[]
 }
 
+interface DC3Record {
+  id: string
+  courseName: string
+  institution?: string | null
+  hours?: number | null
+  completedAt: string
+  expiresAt?: string | null
+  certificateUrl?: string | null
+}
+
 interface Props {
-  employee: Employee
+  employee: Employee & { dc3Records?: DC3Record[] }
   departments: { id: string; name: string }[]
   roles: { id: string; name: string }[]
   isAdmin: boolean
@@ -499,6 +509,49 @@ export function EmployeeProfileClient({ employee: initial, departments, roles, i
                 )}
               </CardContent>
             </Card>
+
+            {/* DC3 */}
+            {(employee.dc3Records?.length ?? 0) > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-1.5">
+                    <GraduationCap className="w-4 h-4" />
+                    Capacitacion DC3 ({employee.dc3Records!.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 p-0 pb-3">
+                  {employee.dc3Records!.map((rec) => {
+                    const expired = rec.expiresAt && isPast(new Date(rec.expiresAt))
+                    const daysLeft = rec.expiresAt ? differenceInDays(new Date(rec.expiresAt), new Date()) : null
+                    return (
+                      <div key={rec.id} className="flex items-start gap-2 px-4 py-2 border-b border-slate-50 last:border-0">
+                        <CheckCircle2 className={`w-4 h-4 mt-0.5 flex-shrink-0 ${expired ? "text-red-400" : "text-green-500"}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-slate-800 leading-snug">{rec.courseName}</p>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {rec.institution && `${rec.institution} · `}
+                            {fmtDate(rec.completedAt)}
+                            {rec.hours && ` · ${rec.hours}h`}
+                          </p>
+                          {rec.expiresAt && (
+                            <p className={`text-xs mt-0.5 ${expired ? "text-red-600 font-medium" : daysLeft !== null && daysLeft <= 30 ? "text-amber-600" : "text-slate-400"}`}>
+                              Vence: {fmtDate(rec.expiresAt)}
+                              {expired && " · VENCIDO"}
+                              {!expired && daysLeft !== null && daysLeft <= 30 && ` · ${daysLeft}d`}
+                            </p>
+                          )}
+                        </div>
+                        {rec.certificateUrl && (
+                          <a href={rec.certificateUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 flex-shrink-0 mt-0.5">
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                      </div>
+                    )
+                  })}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
