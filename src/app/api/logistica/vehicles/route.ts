@@ -26,7 +26,9 @@ export async function POST(req: NextRequest) {
   const isAdmin = ["SUPERADMIN", "ADMIN", "GERENTE"].includes(session.user.role ?? "")
   if (!isAdmin) return NextResponse.json({ error: "Sin permiso" }, { status: 403 })
 
-  const { brand, model, year, plates, permit, driverId, notes } = await req.json()
+  const { brand, model, year, plates, permit, driverId, notes,
+    verificacionFecha, verificacionVigencia,
+    tenenciaAnio, tenenciaFechaPago, tenenciaMonto } = await req.json()
 
   if (!brand?.trim() || !model?.trim()) {
     return NextResponse.json({ error: "Marca y modelo son requeridos" }, { status: 400 })
@@ -41,6 +43,11 @@ export async function POST(req: NextRequest) {
       permit: permit?.trim() || null,
       driverId: driverId || null,
       notes: notes?.trim() || null,
+      verificacionFecha: verificacionFecha ? new Date(verificacionFecha) : null,
+      verificacionVigencia: verificacionVigencia ? new Date(verificacionVigencia) : null,
+      tenenciaAnio: tenenciaAnio ? parseInt(tenenciaAnio) : null,
+      tenenciaFechaPago: tenenciaFechaPago ? new Date(tenenciaFechaPago) : null,
+      tenenciaMonto: tenenciaMonto ? parseFloat(tenenciaMonto) : null,
     },
     include: {
       driver: { select: { fullName: true, licenciaNumero: true, licenciaVencimiento: true } },

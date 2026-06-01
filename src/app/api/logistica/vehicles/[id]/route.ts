@@ -23,6 +23,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(body.driverId !== undefined && { driverId: body.driverId || null }),
       ...(body.status !== undefined && { status: body.status }),
       ...(body.notes !== undefined && { notes: body.notes?.trim() || null }),
+      ...(body.verificacionFecha !== undefined && { verificacionFecha: body.verificacionFecha ? new Date(body.verificacionFecha) : null }),
+      ...(body.verificacionVigencia !== undefined && { verificacionVigencia: body.verificacionVigencia ? new Date(body.verificacionVigencia) : null }),
+      ...(body.tenenciaAnio !== undefined && { tenenciaAnio: body.tenenciaAnio ? parseInt(body.tenenciaAnio) : null }),
+      ...(body.tenenciaFechaPago !== undefined && { tenenciaFechaPago: body.tenenciaFechaPago ? new Date(body.tenenciaFechaPago) : null }),
+      ...(body.tenenciaMonto !== undefined && { tenenciaMonto: body.tenenciaMonto ? parseFloat(body.tenenciaMonto) : null }),
     },
     include: {
       driver: { select: { fullName: true, licenciaNumero: true, licenciaVencimiento: true } },

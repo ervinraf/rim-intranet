@@ -903,21 +903,26 @@ enum PaymentType {
 // ── LOGISTICA ────────────────────────────────────────────────────────────────
 
 model Vehicle {
-  id           String        @id @default(cuid())
-  brand        String
-  model        String
-  year         Int?
-  plates       String?
-  permit       String?
-  driverId     String?
-  status       VehicleStatus @default(DISPONIBLE)
-  isActive     Boolean       @default(true)
-  notes        String?       @db.Text
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  driver       Employee?     @relation(fields: [driverId], references: [id])
-  maintenanceLogs VehicleMaintenanceLog[]
-  checklists   VehicleChecklist[]
+  id                    String        @id @default(cuid())
+  brand                 String
+  model                 String
+  year                  Int?
+  plates                String?
+  permit                String?
+  driverId              String?
+  status                VehicleStatus @default(DISPONIBLE)
+  isActive              Boolean       @default(true)
+  notes                 String?       @db.Text
+  verificacionFecha     DateTime?
+  verificacionVigencia  DateTime?
+  tenenciaAnio          Int?
+  tenenciaFechaPago     DateTime?
+  tenenciaMonto         Decimal?      @db.Decimal(10, 2)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  driver                Employee?     @relation(fields: [driverId], references: [id])
+  maintenanceLogs       VehicleMaintenanceLog[]
+  checklists            VehicleChecklist[]
 
   @@index([driverId])
 }
