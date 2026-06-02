@@ -924,9 +924,21 @@ model Vehicle {
   tenenciaAnio          Int?
   tenenciaFechaPago     DateTime?
   tenenciaMonto         Decimal?      @db.Decimal(10, 2)
-  technicalSheetUrl     String?
-  technicalSheetName    String?
-  createdAt             DateTime      @default(now())
+  technicalSheetUrl      String?
+  technicalSheetName     String?
+  tipo                   VehicleTipo   @default(OTRO)
+  numeroSerie            String?
+  numeroMotor            String?
+  cantidadLlantas        Int?
+  polizaNumero           String?
+  polizaVigencia         DateTime?
+  tarjetaCirculacionUrl  String?
+  tarjetaCirculacionName String?
+  permisoDocUrl          String?
+  permisoDocName         String?
+  polizaDocUrl           String?
+  polizaDocName          String?
+  createdAt              DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
   driver                Employee?     @relation(fields: [driverId], references: [id])
   maintenanceLogs       VehicleMaintenanceLog[]
@@ -990,6 +1002,15 @@ enum VehicleLogType {
   CORRECTIVO
   REVISION
   INCIDENCIA
+}
+
+enum VehicleTipo {
+  TRACTOCAMION
+  REMOLQUE
+  PLATAFORMA
+  LOWBOY
+  CAMIONETA
+  OTRO
 }
 
 enum VehicleItemStatus {

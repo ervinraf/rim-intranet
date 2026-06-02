@@ -28,7 +28,9 @@ export async function POST(req: NextRequest) {
 
   const { brand, model, year, plates, permit, driverId, notes,
     verificacionFecha, verificacionVigencia,
-    tenenciaAnio, tenenciaFechaPago, tenenciaMonto } = await req.json()
+    tenenciaAnio, tenenciaFechaPago, tenenciaMonto,
+    tipo, numeroSerie, numeroMotor, cantidadLlantas,
+    polizaNumero, polizaVigencia } = await req.json()
 
   if (!brand?.trim() || !model?.trim()) {
     return NextResponse.json({ error: "Marca y modelo son requeridos" }, { status: 400 })
@@ -48,6 +50,12 @@ export async function POST(req: NextRequest) {
       tenenciaAnio: tenenciaAnio ? parseInt(tenenciaAnio) : null,
       tenenciaFechaPago: tenenciaFechaPago ? new Date(tenenciaFechaPago) : null,
       tenenciaMonto: tenenciaMonto ? parseFloat(tenenciaMonto) : null,
+      tipo: tipo || "OTRO",
+      numeroSerie: numeroSerie?.trim() || null,
+      numeroMotor: numeroMotor?.trim() || null,
+      cantidadLlantas: cantidadLlantas ? parseInt(cantidadLlantas) : null,
+      polizaNumero: polizaNumero?.trim() || null,
+      polizaVigencia: polizaVigencia ? new Date(polizaVigencia) : null,
     },
     include: {
       driver: { select: { fullName: true, licenciaNumero: true, licenciaVencimiento: true } },

@@ -28,6 +28,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(body.tenenciaAnio !== undefined && { tenenciaAnio: body.tenenciaAnio ? parseInt(body.tenenciaAnio) : null }),
       ...(body.tenenciaFechaPago !== undefined && { tenenciaFechaPago: body.tenenciaFechaPago ? new Date(body.tenenciaFechaPago) : null }),
       ...(body.tenenciaMonto !== undefined && { tenenciaMonto: body.tenenciaMonto ? parseFloat(body.tenenciaMonto) : null }),
+      ...(body.tipo !== undefined && { tipo: body.tipo || "OTRO" }),
+      ...(body.numeroSerie !== undefined && { numeroSerie: body.numeroSerie?.trim() || null }),
+      ...(body.numeroMotor !== undefined && { numeroMotor: body.numeroMotor?.trim() || null }),
+      ...(body.cantidadLlantas !== undefined && { cantidadLlantas: body.cantidadLlantas ? parseInt(body.cantidadLlantas) : null }),
+      ...(body.polizaNumero !== undefined && { polizaNumero: body.polizaNumero?.trim() || null }),
+      ...(body.polizaVigencia !== undefined && { polizaVigencia: body.polizaVigencia ? new Date(body.polizaVigencia) : null }),
     },
     include: {
       driver: { select: { fullName: true, licenciaNumero: true, licenciaVencimiento: true } },

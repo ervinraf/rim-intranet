@@ -21,7 +21,20 @@ import { es } from "date-fns/locale"
 type VehicleStatus = "DISPONIBLE" | "EN_RUTA" | "EN_MANTENIMIENTO" | "BAJA"
 type VehicleLogType = "PREVENTIVO" | "CORRECTIVO" | "REVISION" | "INCIDENCIA"
 type VehicleItemStatus = "OK" | "REQUIERE_ATENCION" | "FALLA" | "NO_APLICA"
+type VehicleTipo = "TRACTOCAMION" | "REMOLQUE" | "PLATAFORMA" | "LOWBOY" | "CAMIONETA" | "OTRO"
+type DocType = "tarjeta" | "permiso" | "poliza"
 type Tab = "vehiculos" | "checklists"
+
+const tipoLabels: Record<VehicleTipo, string> = {
+  TRACTOCAMION: "Tractocamion",
+  REMOLQUE:     "Remolque",
+  PLATAFORMA:   "Plataforma",
+  LOWBOY:       "Lowboy",
+  CAMIONETA:    "Camioneta",
+  OTRO:         "Otro",
+}
+
+const HEAVY_TIPOS: VehicleTipo[] = ["TRACTOCAMION", "REMOLQUE", "PLATAFORMA", "LOWBOY"]
 
 const statusConfig: Record<VehicleStatus, { label: string; color: string }> = {
   DISPONIBLE:       { label: "Disponible",       color: "bg-green-100 text-green-700" },
@@ -85,6 +98,12 @@ interface Vehicle {
   id: string; brand: string; model: string; year?: number | null
   plates?: string | null; permit?: string | null
   status: VehicleStatus; notes?: string | null
+  tipo?: VehicleTipo | null
+  numeroSerie?: string | null
+  numeroMotor?: string | null
+  cantidadLlantas?: number | null
+  polizaNumero?: string | null
+  polizaVigencia?: string | null
   verificacionFecha?: string | null
   verificacionVigencia?: string | null
   tenenciaAnio?: number | null
@@ -92,6 +111,12 @@ interface Vehicle {
   tenenciaMonto?: number | null
   technicalSheetUrl?: string | null
   technicalSheetName?: string | null
+  tarjetaCirculacionUrl?: string | null
+  tarjetaCirculacionName?: string | null
+  permisoDocUrl?: string | null
+  permisoDocName?: string | null
+  polizaDocUrl?: string | null
+  polizaDocName?: string | null
   driver?: { id: string; fullName: string; licenciaNumero?: string | null; licenciaVencimiento?: string | null } | null
   maintenanceLogs: MaintenanceLog[]
   checklists: Checklist[]
@@ -116,17 +141,27 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
   const [editModal, setEditModal] = useState<Vehicle | null>(null)
   const [loading, setLoading] = useState(false)
   const [uploadingSheetId, setUploadingSheetId] = useState<string | null>(null)
+  const [uploadingDocId, setUploadingDocId] = useState<string | null>(null)
   const sheetInputRef = useRef<HTMLInputElement | null>(null)
   const sheetTargetId = useRef<string | null>(null)
+  const docInputRef = useRef<HTMLInputElement | null>(null)
+  const docTargetId = useRef<string | null>(null)
+  const docTypeRef = useRef<DocType | null>(null)
 
   const [newVehicle, setNewVehicle] = useState({
     brand: "", model: "", year: "", plates: "", permit: "", driverId: "", notes: "",
+    tipo: "" as VehicleTipo | "",
+    numeroSerie: "", numeroMotor: "", cantidadLlantas: "",
+    polizaNumero: "", polizaVigencia: "",
   })
 
   const [editForm, setEditForm] = useState({
     brand: "", model: "", year: "", plates: "", permit: "", driverId: "", status: "DISPONIBLE" as VehicleStatus, notes: "",
     verificacionFecha: "", verificacionVigencia: "",
     tenenciaAnio: "", tenenciaFechaPago: "", tenenciaMonto: "",
+    tipo: "OTRO" as VehicleTipo,
+    numeroSerie: "", numeroMotor: "", cantidadLlantas: "",
+    polizaNumero: "", polizaVigencia: "",
   })
 
   const [logForm, setLogForm] = useState({
@@ -179,12 +214,16 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
     const res = await fetch("/api/logistica/vehicles", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...newVehicle, year: newVehicle.year ? parseInt(newVehicle.year) : null }),
+      body: JSON.stringify({
+        ...newVehicle,
+        year: newVehicle.year ? parseInt(newVehicle.year) : null,
+        cantidadLlantas: newVehicle.cantidadLlantas ? parseInt(newVehicle.cantidadLlantas) : null,
+      }),
     })
     if (res.ok) {
       const v = await res.json()
       setVehicles((prev) => [...prev, v])
-      setNewVehicle({ brand: "", model: "", year: "", plates: "", permit: "", driverId: "", notes: "" })
+      setNewVehicle({ brand: "", model: "", year: "", plates: "", permit: "", driverId: "", notes: "", tipo: "", numeroSerie: "", numeroMotor: "", cantidadLlantas: "", polizaNumero: "", polizaVigencia: "" })
       setShowAddVehicle(false)
     }
     setLoading(false)
@@ -200,6 +239,12 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
       tenenciaAnio: v.tenenciaAnio ? String(v.tenenciaAnio) : "",
       tenenciaFechaPago: v.tenenciaFechaPago?.slice(0, 10) ?? "",
       tenenciaMonto: v.tenenciaMonto ? String(v.tenenciaMonto) : "",
+      tipo: v.tipo ?? "OTRO",
+      numeroSerie: v.numeroSerie ?? "",
+      numeroMotor: v.numeroMotor ?? "",
+      cantidadLlantas: v.cantidadLlantas ? String(v.cantidadLlantas) : "",
+      polizaNumero: v.polizaNumero ?? "",
+      polizaVigencia: v.polizaVigencia?.slice(0, 10) ?? "",
     })
     setEditModal(v)
   }
@@ -345,6 +390,40 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
     setVehicles((prev) => prev.map((v) => v.id === vehicleId ? { ...v, technicalSheetUrl: null, technicalSheetName: null } : v))
   }
 
+  async function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    const vehicleId = docTargetId.current
+    const docType = docTypeRef.current
+    if (!file || !vehicleId || !docType) return
+    setUploadingDocId(`${vehicleId}-${docType}`)
+    const fd = new FormData()
+    fd.append("file", file)
+    const res = await fetch(`/api/logistica/vehicles/${vehicleId}/documents?type=${docType}`, { method: "POST", body: fd })
+    if (res.ok) {
+      const { url, fileName } = await res.json()
+      const fieldMap = {
+        tarjeta: { tarjetaCirculacionUrl: url, tarjetaCirculacionName: fileName },
+        permiso:  { permisoDocUrl: url, permisoDocName: fileName },
+        poliza:   { polizaDocUrl: url, polizaDocName: fileName },
+      }
+      setVehicles((prev) => prev.map((v) => v.id === vehicleId ? { ...v, ...fieldMap[docType] } : v))
+    }
+    setUploadingDocId(null)
+    docTargetId.current = null
+    docTypeRef.current = null
+    e.target.value = ""
+  }
+
+  async function deleteVehicleDoc(vehicleId: string, docType: DocType) {
+    await fetch(`/api/logistica/vehicles/${vehicleId}/documents?type=${docType}`, { method: "DELETE" })
+    const clearMap = {
+      tarjeta: { tarjetaCirculacionUrl: null, tarjetaCirculacionName: null },
+      permiso:  { permisoDocUrl: null, permisoDocName: null },
+      poliza:   { polizaDocUrl: null, polizaDocName: null },
+    }
+    setVehicles((prev) => prev.map((v) => v.id === vehicleId ? { ...v, ...clearMap[docType] } : v))
+  }
+
   const categories = [...new Set(CHECKLIST_ITEMS.map((i) => i.category))]
 
   const kpis = {
@@ -390,6 +469,21 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
           <CardContent className="pt-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
+                <Label>Tipo de unidad</Label>
+                <Select value={newVehicle.tipo} onValueChange={(v) => setNewVehicle((p) => ({ ...p, tipo: v as VehicleTipo }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(tipoLabels) as VehicleTipo[]).map((t) => (
+                      <SelectItem key={t} value={t}>{tipoLabels[t]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Ano</Label>
+                <Input type="number" min="1990" max="2030" value={newVehicle.year} onChange={(e) => setNewVehicle((p) => ({ ...p, year: e.target.value }))} placeholder="2022" />
+              </div>
+              <div className="space-y-1.5">
                 <Label>Marca *</Label>
                 <Input value={newVehicle.brand} onChange={(e) => setNewVehicle((p) => ({ ...p, brand: e.target.value }))} placeholder="Ford, Chevrolet, Kenworth..." />
               </div>
@@ -398,16 +492,34 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
                 <Input value={newVehicle.model} onChange={(e) => setNewVehicle((p) => ({ ...p, model: e.target.value }))} placeholder="F-150, Silverado..." />
               </div>
               <div className="space-y-1.5">
-                <Label>Ano</Label>
-                <Input type="number" min="1990" max="2030" value={newVehicle.year} onChange={(e) => setNewVehicle((p) => ({ ...p, year: e.target.value }))} placeholder="2022" />
-              </div>
-              <div className="space-y-1.5">
                 <Label>Placas</Label>
                 <Input value={newVehicle.plates} onChange={(e) => setNewVehicle((p) => ({ ...p, plates: e.target.value }))} placeholder="ABC-123-D" />
               </div>
               <div className="space-y-1.5">
+                <Label>No. de serie</Label>
+                <Input value={newVehicle.numeroSerie} onChange={(e) => setNewVehicle((p) => ({ ...p, numeroSerie: e.target.value }))} placeholder="VIN / No. de serie..." />
+              </div>
+              <div className="space-y-1.5">
+                <Label>No. de motor</Label>
+                <Input value={newVehicle.numeroMotor} onChange={(e) => setNewVehicle((p) => ({ ...p, numeroMotor: e.target.value }))} placeholder="No. de motor..." />
+              </div>
+              {HEAVY_TIPOS.includes(newVehicle.tipo as VehicleTipo) && (
+                <div className="space-y-1.5">
+                  <Label>Cantidad de llantas</Label>
+                  <Input type="number" min="2" max="40" value={newVehicle.cantidadLlantas} onChange={(e) => setNewVehicle((p) => ({ ...p, cantidadLlantas: e.target.value }))} placeholder="18" />
+                </div>
+              )}
+              <div className="space-y-1.5">
                 <Label>Permiso de circulacion</Label>
                 <Input value={newVehicle.permit} onChange={(e) => setNewVehicle((p) => ({ ...p, permit: e.target.value }))} placeholder="No. de permiso..." />
+              </div>
+              <div className="space-y-1.5">
+                <Label>No. poliza de seguro</Label>
+                <Input value={newVehicle.polizaNumero} onChange={(e) => setNewVehicle((p) => ({ ...p, polizaNumero: e.target.value }))} placeholder="No. de poliza..." />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Vigencia de poliza</Label>
+                <Input type="date" value={newVehicle.polizaVigencia} onChange={(e) => setNewVehicle((p) => ({ ...p, polizaVigencia: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
                 <Label>Chofer asignado</Label>
@@ -461,13 +573,8 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
         </div>
       )}
 
-      <input
-        type="file"
-        accept=".pdf,.doc,.docx,image/*"
-        className="hidden"
-        ref={sheetInputRef}
-        onChange={handleSheetUpload}
-      />
+      <input type="file" accept=".pdf,.doc,.docx,image/*" className="hidden" ref={sheetInputRef} onChange={handleSheetUpload} />
+      <input type="file" accept=".pdf,.doc,.docx,image/*" className="hidden" ref={docInputRef} onChange={handleDocUpload} />
 
       {/* ── TAB VEHICULOS ── */}
       {tab === "vehiculos" && (
@@ -501,6 +608,9 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
                         <p className="text-sm font-semibold text-slate-800">
                           {v.brand} {v.model} {v.year ? `(${v.year})` : ""}
                         </p>
+                        {v.tipo && v.tipo !== "OTRO" && (
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{tipoLabels[v.tipo]}</span>
+                        )}
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${st.color}`}>{st.label}</span>
                         {licVencida && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Licencia vencida</span>}
                         {licPorVencer && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Licencia por vencer</span>}
@@ -629,6 +739,109 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
                       {/* Chofer y documentos */}
                       {section === "chofer" && (
                         <div className="space-y-4">
+                          {/* Datos de identificacion */}
+                          <div>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Identificacion de la unidad</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="bg-slate-50 rounded-lg p-3">
+                                <p className="text-xs text-slate-400">No. de serie</p>
+                                <p className="text-sm font-semibold text-slate-800 mt-0.5">{v.numeroSerie ?? "—"}</p>
+                              </div>
+                              <div className="bg-slate-50 rounded-lg p-3">
+                                <p className="text-xs text-slate-400">No. de motor</p>
+                                <p className="text-sm font-semibold text-slate-800 mt-0.5">{v.numeroMotor ?? "—"}</p>
+                              </div>
+                              {v.cantidadLlantas != null && (
+                                <div className="bg-slate-50 rounded-lg p-3">
+                                  <p className="text-xs text-slate-400">Cantidad de llantas</p>
+                                  <p className="text-sm font-semibold text-slate-800 mt-0.5">{v.cantidadLlantas}</p>
+                                </div>
+                              )}
+                              <div className="bg-slate-50 rounded-lg p-3">
+                                <p className="text-xs text-slate-400">Permiso de circulacion</p>
+                                <p className="text-sm font-semibold text-slate-800 mt-0.5">{v.permit ?? "—"}</p>
+                              </div>
+                            </div>
+                          </div>
+                          {/* Poliza de seguro */}
+                          <div>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Poliza de seguro</p>
+                            <div className="grid grid-cols-2 gap-3 mb-2">
+                              <div className="bg-slate-50 rounded-lg p-3">
+                                <p className="text-xs text-slate-400">No. de poliza</p>
+                                <p className="text-sm font-semibold text-slate-800 mt-0.5">{v.polizaNumero ?? "—"}</p>
+                              </div>
+                              <div className="bg-slate-50 rounded-lg p-3">
+                                <p className="text-xs text-slate-400">Vigencia</p>
+                                <p className="text-sm font-semibold text-slate-800 mt-0.5">
+                                  {v.polizaVigencia ? format(new Date(v.polizaVigencia), "d MMM yyyy", { locale: es }) : "—"}
+                                </p>
+                              </div>
+                            </div>
+                            {/* Doc poliza */}
+                            {v.polizaDocUrl ? (
+                              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                                <FileText className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                                <span className="text-xs text-slate-700 flex-1 truncate">{v.polizaDocName}</span>
+                                <a href={v.polizaDocUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800"><ExternalLink className="w-3.5 h-3.5" /></a>
+                                {isAdmin && <button onClick={() => deleteVehicleDoc(v.id, "poliza")} className="text-slate-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>}
+                              </div>
+                            ) : isAdmin ? (
+                              <button
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors disabled:opacity-50"
+                                disabled={uploadingDocId === `${v.id}-poliza`}
+                                onClick={() => { docTargetId.current = v.id; docTypeRef.current = "poliza"; docInputRef.current?.click() }}
+                              >
+                                <FileUp className="w-3.5 h-3.5" />{uploadingDocId === `${v.id}-poliza` ? "Subiendo..." : "Subir documento de poliza"}
+                              </button>
+                            ) : <p className="text-xs text-slate-400">Sin documento adjunto</p>}
+                          </div>
+                          {/* Documentos de circulacion */}
+                          <div>
+                            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Documentos de circulacion</p>
+                            <div className="space-y-2">
+                              {/* Tarjeta de circulacion */}
+                              <div>
+                                <p className="text-xs text-slate-500 mb-1">Tarjeta de circulacion</p>
+                                {v.tarjetaCirculacionUrl ? (
+                                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                                    <FileText className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                                    <span className="text-xs text-slate-700 flex-1 truncate">{v.tarjetaCirculacionName}</span>
+                                    <a href={v.tarjetaCirculacionUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800"><ExternalLink className="w-3.5 h-3.5" /></a>
+                                    {isAdmin && <button onClick={() => deleteVehicleDoc(v.id, "tarjeta")} className="text-slate-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>}
+                                  </div>
+                                ) : isAdmin ? (
+                                  <button
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors disabled:opacity-50"
+                                    disabled={uploadingDocId === `${v.id}-tarjeta`}
+                                    onClick={() => { docTargetId.current = v.id; docTypeRef.current = "tarjeta"; docInputRef.current?.click() }}
+                                  >
+                                    <FileUp className="w-3.5 h-3.5" />{uploadingDocId === `${v.id}-tarjeta` ? "Subiendo..." : "Subir tarjeta de circulacion"}
+                                  </button>
+                                ) : <p className="text-xs text-slate-400">Sin documento adjunto</p>}
+                              </div>
+                              {/* Permiso doc */}
+                              <div>
+                                <p className="text-xs text-slate-500 mb-1">Permiso de circulacion</p>
+                                {v.permisoDocUrl ? (
+                                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                                    <FileText className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                                    <span className="text-xs text-slate-700 flex-1 truncate">{v.permisoDocName}</span>
+                                    <a href={v.permisoDocUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800"><ExternalLink className="w-3.5 h-3.5" /></a>
+                                    {isAdmin && <button onClick={() => deleteVehicleDoc(v.id, "permiso")} className="text-slate-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>}
+                                  </div>
+                                ) : isAdmin ? (
+                                  <button
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors disabled:opacity-50"
+                                    disabled={uploadingDocId === `${v.id}-permiso`}
+                                    onClick={() => { docTargetId.current = v.id; docTypeRef.current = "permiso"; docInputRef.current?.click() }}
+                                  >
+                                    <FileUp className="w-3.5 h-3.5" />{uploadingDocId === `${v.id}-permiso` ? "Subiendo..." : "Subir permiso"}
+                                  </button>
+                                ) : <p className="text-xs text-slate-400">Sin documento adjunto</p>}
+                              </div>
+                            </div>
+                          </div>
                           {/* Chofer */}
                           <div>
                             <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Chofer asignado</p>
@@ -701,11 +914,6 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
                                 </p>
                               </div>
                             </div>
-                          </div>
-                          {/* Permiso */}
-                          <div className="bg-slate-50 rounded-lg p-3">
-                            <p className="text-xs text-slate-400">Permiso de circulacion</p>
-                            <p className="text-sm font-semibold text-slate-800 mt-0.5">{v.permit ?? "—"}</p>
                           </div>
                           {/* Hoja tecnica */}
                           <div>
@@ -782,17 +990,24 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
       {/* ── MODAL EDITAR VEHICULO ── */}
       {editModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
               <h2 className="font-semibold text-slate-900">Editar vehiculo</h2>
               <button onClick={() => setEditModal(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
             </div>
-            <div className="px-6 py-4 grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Marca</Label><Input value={editForm.brand} onChange={(e) => setEditForm((p) => ({ ...p, brand: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label>Modelo</Label><Input value={editForm.model} onChange={(e) => setEditForm((p) => ({ ...p, model: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label>Ano</Label><Input type="number" value={editForm.year} onChange={(e) => setEditForm((p) => ({ ...p, year: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label>Placas</Label><Input value={editForm.plates} onChange={(e) => setEditForm((p) => ({ ...p, plates: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label>Permiso</Label><Input value={editForm.permit} onChange={(e) => setEditForm((p) => ({ ...p, permit: e.target.value }))} /></div>
+            <div className="px-6 py-4 grid grid-cols-2 gap-3 overflow-y-auto flex-1">
+              {/* Tipo y estado */}
+              <div className="space-y-1.5">
+                <Label>Tipo de unidad</Label>
+                <Select value={editForm.tipo} onValueChange={(v) => setEditForm((p) => ({ ...p, tipo: v as VehicleTipo }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(tipoLabels) as VehicleTipo[]).map((t) => (
+                      <SelectItem key={t} value={t}>{tipoLabels[t]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1.5">
                 <Label>Estado</Label>
                 <Select value={editForm.status} onValueChange={(v) => setEditForm((p) => ({ ...p, status: v as VehicleStatus }))}>
@@ -804,6 +1019,27 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5"><Label>Marca</Label><Input value={editForm.brand} onChange={(e) => setEditForm((p) => ({ ...p, brand: e.target.value }))} /></div>
+              <div className="space-y-1.5"><Label>Modelo</Label><Input value={editForm.model} onChange={(e) => setEditForm((p) => ({ ...p, model: e.target.value }))} /></div>
+              <div className="space-y-1.5"><Label>Ano</Label><Input type="number" value={editForm.year} onChange={(e) => setEditForm((p) => ({ ...p, year: e.target.value }))} /></div>
+              <div className="space-y-1.5"><Label>Placas</Label><Input value={editForm.plates} onChange={(e) => setEditForm((p) => ({ ...p, plates: e.target.value }))} /></div>
+              {/* Datos de identificacion */}
+              <div className="col-span-2 pt-1 border-t border-slate-100">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Identificacion</p>
+              </div>
+              <div className="space-y-1.5"><Label>No. de serie</Label><Input value={editForm.numeroSerie} onChange={(e) => setEditForm((p) => ({ ...p, numeroSerie: e.target.value }))} placeholder="VIN / No. de serie..." /></div>
+              <div className="space-y-1.5"><Label>No. de motor</Label><Input value={editForm.numeroMotor} onChange={(e) => setEditForm((p) => ({ ...p, numeroMotor: e.target.value }))} placeholder="No. de motor..." /></div>
+              {HEAVY_TIPOS.includes(editForm.tipo) && (
+                <div className="space-y-1.5"><Label>Cantidad de llantas</Label><Input type="number" min="2" max="40" value={editForm.cantidadLlantas} onChange={(e) => setEditForm((p) => ({ ...p, cantidadLlantas: e.target.value }))} placeholder="18" /></div>
+              )}
+              <div className="space-y-1.5"><Label>Permiso de circulacion</Label><Input value={editForm.permit} onChange={(e) => setEditForm((p) => ({ ...p, permit: e.target.value }))} /></div>
+              {/* Poliza */}
+              <div className="col-span-2 pt-1 border-t border-slate-100">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Poliza de seguro</p>
+              </div>
+              <div className="space-y-1.5"><Label>No. de poliza</Label><Input value={editForm.polizaNumero} onChange={(e) => setEditForm((p) => ({ ...p, polizaNumero: e.target.value }))} placeholder="No. de poliza..." /></div>
+              <div className="space-y-1.5"><Label>Vigencia de poliza</Label><Input type="date" value={editForm.polizaVigencia} onChange={(e) => setEditForm((p) => ({ ...p, polizaVigencia: e.target.value }))} /></div>
+              {/* Chofer */}
               <div className="space-y-1.5 col-span-2">
                 <Label>Chofer asignado</Label>
                 <Select value={editForm.driverId} onValueChange={(v) => setEditForm((p) => ({ ...p, driverId: v ?? "" }))}>
@@ -814,6 +1050,7 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
                   </SelectContent>
                 </Select>
               </div>
+              {/* Verificacion */}
               <div className="col-span-2 pt-1 border-t border-slate-100">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Verificacion vehicular</p>
               </div>
@@ -825,6 +1062,7 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
                 <Label>Vigencia (vencimiento)</Label>
                 <Input type="date" value={editForm.verificacionVigencia} onChange={(e) => setEditForm((p) => ({ ...p, verificacionVigencia: e.target.value }))} />
               </div>
+              {/* Tenencia */}
               <div className="col-span-2 pt-1 border-t border-slate-100">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Tenencia</p>
               </div>
@@ -841,7 +1079,7 @@ export function LogisticaClient({ vehicles: initial, employees, isAdmin }: Props
                 <Input type="number" step="0.01" min="0" placeholder="0.00" value={editForm.tenenciaMonto} onChange={(e) => setEditForm((p) => ({ ...p, tenenciaMonto: e.target.value }))} />
               </div>
             </div>
-            <div className="flex gap-2 px-6 py-4 border-t border-slate-200">
+            <div className="flex gap-2 px-6 py-4 border-t border-slate-200 flex-shrink-0">
               <Button variant="outline" className="flex-1" onClick={() => setEditModal(null)}>Cancelar</Button>
               <Button className="flex-1" onClick={saveEdit} disabled={loading}>
                 <Check className="w-3.5 h-3.5 mr-1.5" />{loading ? "Guardando..." : "Guardar"}
